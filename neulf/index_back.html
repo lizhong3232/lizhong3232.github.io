@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description"
+          content="NeuLF: Efficient Novel View Synthesis with Neural 4D Light Field">
+    <meta name="author" content="Zhong Li">
+
+    <title>NeuLF: Efficient Novel View Synthesis with Neural 4D Light Field</title>
+    <!-- Bootstrap core CSS -->
+    <!--link href="bootstrap.min.css" rel="stylesheet"-->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <!-- Custom styles for this template -->
+    <link href="offcanvas.css" rel="stylesheet">
+    <!--    <link rel="icon" href="img/favicon.gif" type="image/gif">-->
+</head>
+
+<body>
+<div class="jumbotron jumbotron-fluid">
+    <div class="container"></div>
+    <h2>NeuLF: Efficient Novel View Synthesis with Neural 4D Light Field</h2>
+    <h3>Eurographics Symposium on Rendering(EGSR)2022</h3>
+    <hr>
+    <p class="authors">
+        <a href="https://sites.google.com/site/lizhong19900216"> Zhong Li<sup>1</sup></a>,
+        <a href="https://lsongx.github.io/"> Liangchen Song<sup>2</sup></a>,
+        <a href="https://www.cct.lsu.edu/~cliu/"> Celong Liu<sup>1</sup></a>,
+        <a href="https://cse.buffalo.edu/~jsyuan/"> Junsong Yuan<sup>2</sup></a>,
+        <a href="https://www.linkedin.com/in/yi-xu-42654823/"> Yi Xu<sup>1</sup></a>
+
+        <br><sup>1</sup>OPPO US Research Center, Palo Alto, California, USA 
+        <br><sup>2</sup>University at Buffalo 
+    </p>
+    <div class="btn-group" role="group" aria-label="Top menu">
+        <a class="btn btn-primary" href="https://diglib.eg.org/bitstream/handle/10.2312/sr20221156/059-069.pdf?sequence=1&isAllowed=y">Paper</a>
+        <a class="btn btn-primary" href="https://arxiv.org/pdf/2105.07112.pdf">arXiv</a>
+        <a class="btn btn-primary" href="https://diglib.eg.org/bitstream/handle/10.2312/sr20221156/059-069.pdf?sequence=1&isAllowed=y">Code(Coming soon)</a>
+        <a class="btn btn-primary" href="https://diglib.eg.org/bitstream/handle/10.2312/sr20221156/059-069.pdf?sequence=1&isAllowed=y">Data(Coming soon)</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="section">
+        <div class="vcontainer">
+            <iframe class='video' src="https:///www.youtube.com/embed/sD61yIfN6To" frameborder="0"
+                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen></iframe>
+        </div>
+        <hr>
+        <p>
+            In this paper, we present an efficient and robust deep learning solution for novel view synthesis of complex scenes. 
+            In our approach, a 3D scene is represented as a light field, i.e., a set of rays, each of which has a corresponding color when reaching the image plane. 
+            For efficient novel view rendering, we adopt a two-plane parameterization of the light field, where each ray is characterized by a 4D parameter. 
+            We then formulate the light field as a 4D function that maps 4D coordinates to corresponding color values. We train a deep fully connected network to optimize this implicit function 
+            and memorize the 3D scene. Then, the scene-specific model is used to synthesize novel views. Different from previous light field approaches which require dense view sampling to reliably 
+            render novel views, our method can render novel views by sampling rays and querying the color for each ray from the network directly, thus enabling high-quality light field rendering with 
+            a sparser set of training images. Per-ray depth can be optionally predicted by the network, thus enabling applications such as auto refocus. Our novel view synthesis results are comparable
+             to the state-of-the-arts, and even superior in some challenging scenes with refraction and reflection. We achieve this while maintaining an interactive frame rate and a small memory footprint.
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>Demo</h2>
+        <hr>
+
+        <div class="row align-items-center">
+            <div class="col justify-content-center text-center">
+                <video width="100%" playsinline="" autoplay="" loop="" preload="" muted="">
+                    <source src="img/xiaobu.mp4" type="video/mp4">
+                </video>
+            </div> 
+        </div>
+
+        <div class="row align-items-center">
+            <div class="col justify-content-center text-center">
+                <video width="100%" playsinline="" autoplay="" loop="" preload="" muted="">
+                    <source src="img/neulf_zhong.mp4" type="video/mp4">
+                </video>
+            </div> 
+        </div>
+
+    </div>
+
+    <div class="section">
+        <h2>Real Time Demo</h2>
+        <hr>
+
+        <div class="row align-items-center">
+            <div class="col justify-content-center text-center">
+                <video width="100%" playsinline="" autoplay="" loop="" preload="" muted="">
+                    <source src="img/RTNeuLFDemo.mp4" type="video/mp4">
+                </video>
+            </div> 
+        </div>
+
+    </div>
+
+    <div class="section">
+        <h2>Overview</h2>
+        <hr>
+        <p>
+            For a set of sampled rays from training images, their 4D coordinates and the corresponding color values can be obtained. 
+            The input for NeLF is the 4D coordinate of a ray (query) and the output is its RGB color and scene depth. 
+            By optimizing the differences between the predicted colors and ground-truth colors, NeLF can faithfully learn the mapping 
+            between a 4D coordinate that characterizes the ray and its color. We also build a depth branch to let the network learn 
+            the per ray scene depth by self-supervised losses
+        </p>
+        <div class="row align-items-center">
+            <div class="col justify-content-center text-center">
+                <img src="img/Pipeline.png" style="width:100%; margin-right:-10px; margin-top:-10px;">
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Results Video</h2>
+        <hr>
+
+        <div class="row align-items-center">
+            <div class="col justify-content-center text-center">
+                <video width="100%" playsinline="" autoplay="" loop="" preload="" muted="">
+                    <source src="img/results.mp4" type="video/mp4">
+                </video>
+            </div> 
+        </div>
+
+    </div>
+
+    <div class="section">
+        <h2>Qualitative Results</h2>
+        <hr>
+
+        <div class="col justify-content-center text-center">
+            <img src="img/quantitative.png" style="width:100%; margin-right:-10px; margin-top:10px;">
+
+        <p>
+            Qualitative Results on test views from shinny dataset. Our method captures more details on the reflection and refraction areas of the scenes.
+        </p>
+    </div>
+
+
+    <!-- <div class="section">
+        <h2>Paper</h2>
+        <hr>
+        <div>
+            <div class="list-group">
+                <a href="paper/nuelf/NeuLF.pdf"
+                   class="list-group-item">
+                    <img src="img/paper_thumbnail.png" style="width:100%; margin-right:-20px; margin-top:-10px;">
+                </a>
+            </div>
+        </div>
+    </div> -->
+
+    <div class="section">
+        <h2>Bibtex</h2>
+        <hr>
+        <div class="bibtexsection">
+            @inproceedings {li2022neulf,
+                booktitle = {Eurographics Symposium on Rendering},
+                title = {NeuLF: Efficient Novel View Synthesis with Neural 4D Light Field},
+                author = {Li, Zhong and Song, Liangchen and Liu, Celong and Yuan, Junsong and Xu, Yi},
+                year = {2022},
+            }
+        </div>
+
+        <hr>
+        <div class="bibtexsection">
+            @article{li2021neulf,
+                title={NeuLF: Efficient Novel View Synthesis with Neural 4D Light Field},
+                author={Li, Zhong and Song, Liangchen and Liu, Celong and Yuan, Junsong and Xu, Yi},
+                journal={arXiv e-prints},
+                pages={arXiv--2105},
+                year={2021}
+              }
+        </div>
+    </div>
+
+
+    <div class="section">
+        <h2>Related works</h2>
+        <hr>
+        <div class="list-group">
+            Modeling light field with neural networks is also well studied by the following works:
+            <ul>
+            <li>
+                <a href="https://www.vincentsitzmann.com/lfns/">Light Field Networks: Neural Scene Representations with Single-Evaluation Rendering</a>. NeurIPS 2021.<br>
+                Vincent Sitzmann, Semon Rezchikov, William T. Freeman, Joshua B. Tenenbaum, Fredo Durand
+            </li>
+            <li>
+                <a href="https://arxiv.org/abs/2112.09687">Light Field Neural Rendering</a>. CVPR 2022.<br>
+                Suhail, Mohammed, Carlos Esteves, Leonid Sigal, and Ameesh Makadia
+            </li>
+            <li>
+                <a href="https://neural-light-fields.github.io/">Learning Neural Light Fields with Ray-Space Embedding Networks</a>. CVPR 2022.<br>
+                Benjamin Attal, Jia-Bin Huang, Michael Zollhöfer, Johannes Kopf, Changil Kim
+            </li>
+            </ul>
+        </div>
+    </div>
+
+     <footer>
+        <hr>
+        <p>Send feedback and questions to <a href="https://sites.google.com/site/lizhong19900216/">Zhong Li</a>.
+            Website adapted from <a href="https://www.vincentsitzmann.com/lfns/">Light Field Networks</a>.</p>
+    </footer>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+        integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
+        integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
+        crossorigin="anonymous"></script>
+
+</body>
+</html>
