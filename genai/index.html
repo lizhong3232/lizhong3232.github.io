@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenAI 视觉大模型全景知识库 | Image & Video Generation Masterclass</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#ecfdf5', 500: '#10b981', 600: '#059669', 700: '#047857' },
+            accent: { 500: '#06b6d4', 600: '#0891b2' },
+            violet: { 500: '#8b5cf6', 600: '#7c3aed' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937', 700: '#374151' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- KaTeX for Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(16, 185, 129, 0.35);
+      transform: translateY(-2px);
+    }
+    .gradient-text-emerald {
+      background: linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #6366f1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .gradient-text-purple {
+      background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 50%, #f43f5e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #030712; }
+    ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Top Global Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/85 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 via-cyan-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <i data-lucide="brain-circuit" class="w-5 h-5 text-slate-950"></i>
+        </div>
+        <div>
+          <span class="font-bold text-lg tracking-tight gradient-text-emerald">Vision GenAI Knowledge Hub</span>
+          <span class="hidden sm:inline-block ml-2 text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">图像 & 视频生成大模型全景</span>
+        </div>
+      </div>
+      
+      <nav class="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm font-medium">
+        <a href="#image-gen" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-1.5">
+          <i data-lucide="image" class="w-4 h-4 text-emerald-400"></i> 图像生成 (Image Gen)
+        </a>
+        <a href="#video-gen" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-1.5">
+          <i data-lucide="video" class="w-4 h-4 text-cyan-400"></i> 视频生成 (Video Gen)
+        </a>
+        <a href="#evaluation-systems" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-1.5">
+          <i data-lucide="gauge" class="w-4 h-4 text-purple-400"></i> 评测与系统
+        </a>
+        <a href="#interview-cheatsheet" class="px-3 py-1.5 rounded-lg text-amber-400 bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5">
+          <i data-lucide="award" class="w-4 h-4"></i> 高频面试精析
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+    
+    <div class="relative overflow-hidden rounded-3xl glass-card p-8 sm:p-12 border border-slate-800 bg-gradient-to-b from-slate-900/80 to-dark-950/90">
+      <div class="absolute -right-24 -top-24 w-96 h-96 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-24 -bottom-24 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="max-w-4xl space-y-5">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-900/90 text-emerald-400 border border-emerald-500/30">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> MLE & Research Scientist 顶级面试与知识储备专库
+        </div>
+        <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+          生成式 AI 视觉大模型全景知识库<br>
+          <span class="gradient-text-emerald">Image Generation · Video Generation · 3D Spatial AI</span>
+        </h1>
+        <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-3xl">
+          从数学本源（SDE / ODE / 最优传输流匹配）、网络底座（UNet / DiT / MM-DiT / 时空 3D-DiT）、压缩编码（VAE / 3D Causal VAE）、条件控制（ControlNet / IP-Adapter / I2V）到工业级并行加速与极速蒸馏（Reflow / ADD / FlashAttention-3）。
+        </p>
+
+        <!-- Quick Stats / Badges -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 font-mono text-xs text-slate-400">
+          <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span>图像生成: 5 大核心专题</span>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+            <span>视频生成: 4 大前沿支柱</span>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+            <span>并行计算: 3D Token 并行</span>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <span>面试高频: 12 道真题精解</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRACK 1: Image Generation -->
+    <section id="image-gen" class="space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider mb-1">
+            <i data-lucide="image" class="w-4 h-4"></i> Track 01 · 图像生成大模型
+          </div>
+          <h2 class="text-2xl font-bold text-white">Image Generation 核心技术栈与演进</h2>
+        </div>
+        <a href="01_image_gen/index.html" class="text-xs px-3.5 py-2 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition flex items-center gap-1.5">
+          进入图像生成专区看板 <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- 1.0 Transformer Basics -->
+        <a href="01_image_gen/00_transformer_attention_basics.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-emerald-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">基础算力引擎</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-lg text-white mb-1.5 group-hover:text-emerald-300 transition">00. Transformer 与注意力机制基石</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            软寻址检索直觉、Scaled Dot-Product 注意力、多头注意力 (MHA)、跨模态 Cross-Attention 与 FlashAttention 硬件 Tiling / Online Softmax 原理。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 space-y-1 border-t border-slate-800/80 pt-3">
+            <div class="text-emerald-400/90">• 核心证明: 为什么必须除以 $\sqrt{d_k}$ 防梯度饱和？</div>
+            <div>• 包含自包含 PyTorch MHA/Cross-Attention 实现</div>
+          </div>
+        </a>
+
+        <!-- 1.1 Diffusion & Flow Matching -->
+        <a href="01_image_gen/index.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-cyan-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">核心理论三部曲</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-lg text-white mb-1.5 group-hover:text-cyan-300 transition">01. 扩散模型到流匹配 (DDPM ➔ DDIM ➔ Flow Matching)</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            从 1000 步随机马尔可夫 SDE，到确定性常微分方程 ODE 采样，再到 SD3 / Flux 时代的直线最优传输流匹配与 Reflow。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 space-y-1 border-t border-slate-800/80 pt-3">
+            <div class="text-cyan-400/90">• 包含 01_ddpm / 02_ddim / 03_flow_matching</div>
+            <div>• 包含 2D Canvas 概率轨迹模拟器 & SNR 曲线</div>
+          </div>
+        </a>
+
+        <!-- 1.2 RoPE Evolution to M-RoPE -->
+        <a href="01_image_gen/04_rope_evolution.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-purple-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">空间坐标罗盘</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-lg text-white mb-1.5 group-hover:text-purple-300 transition">02. 位置编码全景：1D ➔ 2D/3D RoPE ➔ Qwen M-RoPE</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            从 1D 文本旋转编码，到图像 DiT (FLUX/SD3) 的 2D 轴向旋转，再到视频生成 3D 时空旋转与 Qwen2-VL 独创的三元组多模态 M-RoPE。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 space-y-1 border-t border-slate-800/80 pt-3">
+            <div class="text-purple-400/90">• 攻克原生动态分辨率与图文交错位置对齐</div>
+            <div>• 包含可运行 PyTorch M-RoPE 统一模块</div>
+          </div>
+        </a>
+
+        <!-- 1.3 DiT & MM-DiT Architectures -->
+        <a href="01_image_gen/04_dit_architecture.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-indigo-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">网络架构演进</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-lg text-white mb-1.5 group-hover:text-indigo-300 transition">03. DiT 与 MM-DiT 架构精解 (SD3 / Flux.1)</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            从传统 UNet 的归纳偏置局限，到 Diffusion Transformer (Peebles & Xie) 的 Patchify 机制，再到 SD3/Flux 的双流多模态联合注意力 (Joint Attention)。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 space-y-1 border-t border-slate-800/80 pt-3">
+            <div>• 核心机制: adaLN-Zero、Q-K Normalization</div>
+            <div>• 双流设计: 图像 Token 与文本 Token 联合表征</div>
+          </div>
+        </a>
+
+        <!-- 1.4 Controllable & Distillation -->
+        <a href="01_image_gen/05_control_distillation.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-rose-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">控制与极速蒸馏</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-rose-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-lg text-white mb-1.5 group-hover:text-rose-300 transition">04. 可控生成与极速蒸馏 (ControlNet / ADD / CM)</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            ControlNet 零卷积微调机制、IP-Adapter 解耦交叉注意力、Consistency Models 一致性蒸馏与 ADD/DMD 单步实时生成。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 space-y-1 border-t border-slate-800/80 pt-3">
+            <div>• 可控机制: 空间提示、姿态、深度图注入</div>
+            <div>• 极速生成: 1~4 步高质量实时生成理论</div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- TRACK 2: Video Generation -->
+    <section id="video-gen" class="space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider mb-1">
+            <i data-lucide="video" class="w-4 h-4"></i> Track 02 · 视频生成前沿
+          </div>
+          <h2 class="text-2xl font-bold text-white">Video Generation 核心技术栈 (Sora / Wan2.1 / HunyuanVideo)</h2>
+        </div>
+        <a href="02_video_gen/index.html" class="text-xs px-3.5 py-2 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 transition flex items-center gap-1.5">
+          进入视频生成专区看板 <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- 2.1 Spatiotemporal DiT -->
+        <a href="02_video_gen/01_spatiotemporal_dit.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-cyan-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">3D Backbone</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-base text-white mb-1.5 group-hover:text-cyan-300 transition">01. 时空 3D DiT (Spatiotemporal DiT)</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-3">
+            视频 3D Patchification $(P_T \times P_H \times P_W)$、分因子空间-时间解耦注意力 (Factorized Attention) vs 全时空 3D 联合自注意力。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 border-t border-slate-800 pt-2.5">
+            • 核心考点: 复杂度 $O((THW)^2)$ 压缩优化
+          </div>
+        </a>
+
+        <!-- 2.2 3D Causal VAE -->
+        <a href="02_video_gen/02_causal_3d_vae.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-indigo-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">时空压缩分词</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-base text-white mb-1.5 group-hover:text-indigo-300 transition">02. 3D Causal VAE 与时空分词</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-3">
+            时间因果卷积（Causal 3D Conv）保证时间单向流动、时空 $4 \times 8 \times 8$ 压缩比、流式视频编解码。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 border-t border-slate-800 pt-2.5">
+            • 核心考点: 为什么时间维必须 Causal？
+          </div>
+        </a>
+
+        <!-- 2.3 Video Flow Matching -->
+        <a href="02_video_gen/03_video_flow_matching.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-purple-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">视频流匹配</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-base text-white mb-1.5 group-hover:text-purple-300 transition">03. 视频流匹配与 I2V 条件控制</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-3">
+            4D 时空速度场回归、首帧图像引导（I2V Concatenation vs Cross-Attn）、相机运镜轨迹控制 (Camera Motion LoRA)。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 border-t border-slate-800 pt-2.5">
+            • 核心考点: 图像动画化中的时空一致性
+          </div>
+        </a>
+
+        <!-- 2.4 Long Video -->
+        <a href="02_video_gen/04_long_video_consistency.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-rose-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">长视频一致性</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-rose-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-base text-white mb-1.5 group-hover:text-rose-300 transition">04. 长视频生成与运动一致性</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-3">
+            自回归时空扩散 (Autoregressive Video Diffusion)、滑动窗口局部注意力、动态帧率 (Dynamic FPS) 嵌入与运动模糊抑制。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 border-t border-slate-800 pt-2.5">
+            • 核心考点: 几分钟长视频如何防止漂移崩塌？
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- TRACK 3: Evaluation & Systems -->
+    <section id="evaluation-systems" class="space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs font-mono font-bold text-purple-400 uppercase tracking-wider mb-1">
+            <i data-lucide="gauge" class="w-4 h-4"></i> Track 03 · 评测体系与工业系统
+          </div>
+          <h2 class="text-2xl font-bold text-white">评测标准与超长序列系统并行</h2>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-3">
+          <div class="flex items-center gap-2 text-purple-400 font-bold text-base">
+            <i data-lucide="check-square" class="w-5 h-5"></i> 评测基准 (Metrics)
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            • 图像质量: <strong>FID (Fréchet Inception Distance)</strong>, IS, CLIP-Score<br>
+            • 视频评测: <strong>FVD (Fréchet Video Distance)</strong>, <strong>VBench</strong> (时序流畅性、背景一致性、动态程度、文本匹配度 16 维评测)
+          </p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-3">
+          <div class="flex items-center gap-2 text-cyan-400 font-bold text-base">
+            <i data-lucide="cpu" class="w-5 h-5"></i> 视频长序列并行 (Context Parallelism)
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            视频包含 $T \times H \times W > 100k$ 个 Token，单张显卡显存爆满。工业界采用 <strong>Ring Attention</strong> 与 <strong>DeepSpeed Ulysses (All-to-All 通信)</strong> 沿时间/空间维分布式切分注意力。
+          </p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 border border-slate-800 space-y-3">
+          <div class="flex items-center gap-2 text-emerald-400 font-bold text-base">
+            <i data-lucide="zap" class="w-5 h-5"></i> 硬件加速与 Kernel 算子
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            • <strong>FlashAttention-3</strong> 针对 Hopper (H100/H800) 异步 Warp-Group 深度优化<br>
+            • <strong>PagedAttention & Chunked KV-Cache</strong> 支持自回归视频流式生成
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Top Interview Cheatsheet -->
+    <section id="interview-cheatsheet" class="space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs font-mono font-bold text-amber-400 uppercase tracking-wider mb-1">
+            <i data-lucide="award" class="w-4 h-4"></i> High-Yield Interview Master Cheatsheet
+          </div>
+          <h2 class="text-2xl font-bold text-white">顶级大厂 MLE / GenAI Researcher 高频考点速记</h2>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+        <details class="glass-card rounded-xl p-5 border border-slate-800 group cursor-pointer">
+          <summary class="font-semibold text-slate-200 flex justify-between items-center">
+            <span>Q1: 视频生成中，为什么不能把每一帧当作独立图像分别生成？</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition"></i>
+          </summary>
+          <div class="mt-3 pt-3 border-t border-slate-800 text-slate-400 leading-relaxed space-y-1">
+            <p><strong>核心答点</strong>：独立帧生成会导致严重的<strong>时间闪烁 (Temporal Flickering)</strong> 与物理规律违背。视频本质是时空连续流形，必须通过 3D Causal VAE 压缩时间冗余，并通过时空注意力（Temporal Attention）强制相邻帧之间维持严格的光流与运动轨迹一致性。</p>
+          </div>
+        </details>
+
+        <details class="glass-card rounded-xl p-5 border border-slate-800 group cursor-pointer">
+          <summary class="font-semibold text-slate-200 flex justify-between items-center">
+            <span>Q2: 什么是 3D Causal VAE？与 2D VAE 相比为什么必须满足因果性？</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition"></i>
+          </summary>
+          <div class="mt-3 pt-3 border-t border-slate-800 text-slate-400 leading-relaxed space-y-1">
+            <p><strong>核心答点</strong>：标准 3D 卷积在时间维是对称的（同时看过去和未来帧），这导致：1. 无法实现流式实时推理；2. 第一帧会受到未来噪声帧的污染。<strong>Causal（因果）卷积</strong>强制每一时刻只聚合 $t \le \tau$ 的过去信息，保证时间箭头的单向性，天然兼容长视频自回归扩展。</p>
+          </div>
+        </details>
+
+        <details class="glass-card rounded-xl p-5 border border-slate-800 group cursor-pointer">
+          <summary class="font-semibold text-slate-200 flex justify-between items-center">
+            <span>Q3: 图像-视频生成 (I2V) 中，首帧条件注入有哪两种主流方式？优劣是什么？</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition"></i>
+          </summary>
+          <div class="mt-3 pt-3 border-t border-slate-800 text-slate-400 leading-relaxed space-y-1">
+            <p><strong>核心答点</strong>：<br>
+            1. <strong>通道拼接 (Channel Concatenation)</strong>：将首帧潜码与噪声在通道维拼叠。保真度极高、首帧纹理严格锁定，但动作变化范围受限。<br>
+            2. <strong>交叉注意力 (Cross-Attention Conditioning)</strong>：将首帧经过 CLIP 提取特征作为 Key-Value 注入。动作幅度大、自由度高，但首帧细节可能产生微小漂移。</p>
+          </div>
+        </details>
+
+        <details class="glass-card rounded-xl p-5 border border-slate-800 group cursor-pointer">
+          <summary class="font-semibold text-slate-200 flex justify-between items-center">
+            <span>Q4: 为什么 DiT (Diffusion Transformer) 能够彻底取代 UNet？</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition"></i>
+          </summary>
+          <div class="mt-3 pt-3 border-t border-slate-800 text-slate-400 leading-relaxed space-y-1">
+            <p><strong>核心答点</strong>：<br>
+            1. <strong>严格遵循 Scaling Law</strong>：UNet 包含复杂的下采样/上采样与残差连接，堆叠参数无法有效转化为生成质量；DiT 是标准纯 Transformer 堆叠，算力与质量成极强线性正比。<br>
+            2. <strong>多模态无缝融合</strong>：天然支持文本 Token 与图像/视频 Token 的跨模态联合注意力。<br>
+            3. <strong>完美复用成熟基建</strong>：直接享受 FlashAttention、Megatron 并行、ZeRO 等 LLM 领域成熟的基础设施加速。</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-10 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+        <span class="font-semibold text-slate-400">Vision GenAI Masterclass (Image & Video Generation)</span>
+      </div>
+      <div>Designed for Cutting-edge AI Research, Daily System Development & Senior MLE Interviews</div>
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

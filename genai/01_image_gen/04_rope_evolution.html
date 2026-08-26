@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 04：位置编码全景演进 | 1D RoPE ➔ 2D/3D RoPE ➔ Qwen M-RoPE</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#10b981', 600: '#059669' },
+            accent: { 500: '#06b6d4', 600: '#0891b2' },
+            purple: { 500: '#8b5cf6', 600: '#7c3aed' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Prism.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+  <!-- Lucide Icons & KaTeX -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .gradient-text-emerald {
+      background: linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="../index.html" class="text-slate-400 hover:text-slate-200">总门户</a>
+          <span class="text-slate-600">/</span>
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">图像生成</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-emerald-400">04. RoPE 全景演进与代码实战</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2 text-xs">
+        <a href="03_flow_matching.html" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1">
+          <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> 上一篇: Flow Matching
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-14">
+    
+    <!-- Title Card -->
+    <div class="space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-mono">
+        <i data-lucide="compass" class="w-3.5 h-3.5"></i> ROTARY POSITION EMBEDDING (ROPE) COMPREHENSIVE GUIDE
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        位置编码全景大一统：从 1D RoPE、2D/3D RoPE 到 Qwen M-RoPE
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        位置编码是生成模型与多模态大模型的“空间罗盘”。本文不仅深入推导其几何数学本源，并为<strong>每一个演进阶段（1D ➔ 2D ➔ 3D ➔ Qwen M-RoPE）均配备极简、可运行的 PyTorch 代码与保姆级逐行注释</strong>。
+      </p>
+    </div>
+
+    <!-- Module 1: The "Why" & Physical Intuition -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        核心动机：为什么绝对位置编码在多模态/生成中崩塌？(The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="flex items-start gap-3">
+          <i data-lucide="help-circle" class="w-6 h-6 text-emerald-400 shrink-0 mt-0.5"></i>
+          <p class="text-slate-300 text-sm leading-relaxed">
+            <strong>绝对位置编码 (Absolute Positional Embedding) 的 3 大致命硬伤：</strong>
+          </p>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-rose-400">1. 无法外推可变分辨率</span>
+            <p class="text-slate-400">训练是 $512 \times 512$（$32 \times 32$ 个 Patch），测试时生成 $1024 \times 1024$，绝对位置表直接溢出，插值会导致画面结构扭曲。</p>
+          </div>
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-rose-400">2. 破坏相对平移不变性</span>
+            <p class="text-slate-400">一只猫从画面左上角移动到右下角，猫自身的眼鼻相对几何距离不变，但绝对坐标值完全变了，注意力内积无法保持相对一致性。</p>
+          </div>
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-rose-400">3. 图文多模态无法自然对齐</span>
+            <p class="text-slate-400">一维文本 Token 只有长度序号，二维图片有高宽网格，三维视频有时序帧，传统编码无法统一在同一个注意力矩阵中无损交互。</p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-lg bg-emerald-950/20 border border-emerald-500/30 text-xs text-slate-300 space-y-1">
+          <p class="text-emerald-400 font-semibold">✨ RoPE 的几何魔法：复数旋转与内积的相对性</p>
+          <p class="text-slate-400 leading-relaxed">
+            RoPE (Su et al.) 的核心思想是：<strong>用旋转矩阵对 Query 和 Key 向量在 2D 平面做旋转变换</strong>。两个向量旋转后的内积 $\langle \mathbf{R}_m \mathbf{q}, \mathbf{R}_n \mathbf{k} \rangle$ 严格只取决于它们的<strong>相对位置差 $(m - n)$</strong>，完美兼备绝对编码的实现便利与相对编码的几何泛化！
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 2: Evolution from 1D to 2D & 3D RoPE (With Standalone Code for EACH!) -->
+    <section class="space-y-6">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        从 1D 到 2D、3D RoPE：逐级推导与独立代码实现
+      </h2>
+
+      <!-- 2.1 1D RoPE -->
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-white text-base text-emerald-300 flex items-center gap-2">
+            <span class="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-mono font-bold">2.1</span>
+            1D RoPE (标准文本序列 · RoFormer / LLaMA / Mistral)
+          </h3>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">1D 标量位置 $m$</span>
+        </div>
+        
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          将特征维度 $d$ 每两个分量 $(x_1, x_2)$ 视为复数平面上的点，通过位置 $m$ 与基础频率 $\theta_i = 10000^{-2(i-1)/d}$ 计算旋转角度 $\theta = m \cdot \theta_i$，并执行复数乘法旋转：
+        </p>
+        $$\begin{pmatrix} x_1' \\ x_2' \end{pmatrix} = \begin{pmatrix} \cos(m\theta) & -\sin(m\theta) \\ \sin(m\theta) & \cos(m\theta) \end{pmatrix} \begin{pmatrix} x_1 \\ x_2 \end{pmatrix} = \begin{pmatrix} x_1 \cos(m\theta) - x_2 \sin(m\theta) \\ x_1 \sin(m\theta) + x_2 \cos(m\theta) \end{pmatrix}$$
+
+        <!-- 1D RoPE PyTorch Code -->
+        <div class="space-y-2">
+          <span class="text-xs font-mono text-emerald-400 font-semibold">// 1D RoPE 极简独立实现 (包含 rotate_half 核心技巧)</span>
+          <pre class="language-python"><code class="language-python">import torch
+import torch.nn as nn
+
+def apply_1d_rope(x: torch.Tensor, pos_ids: torch.Tensor, base: float = 10000.0) -> torch.Tensor:
+    """
+    1D 旋转位置编码 (RoPE)
+    - x: [Batch, Heads, Seq_Len, Dim] 输入的 Q 或 K 向量
+    - pos_ids: [Batch, Seq_Len] 每个 Token 的 1D 标量位置 (例如 [0, 1, 2, ...])
+    """
+    B, H, S, D = x.shape
+    assert D % 2 == 0, "特征维度 Dim 必须为偶数"
+
+    # 1. 计算每个复数平面的旋转角频率 theta_i = 1.0 / (base ** (2i / D))
+    inv_freq = 1.0 / (base ** (torch.arange(0, D, 2, device=x.device).float() / D)) # [D // 2]
+    
+    # 2. 计算每个位置的实际旋转弧度 m * theta_i: [B, S] 外积 [D // 2] -> [B, S, D // 2]
+    angles = torch.einsum('bs, d -> bsd', pos_ids.float(), inv_freq)
+    
+    # 3. 复制两份构成完整的 [B, 1, S, D] 旋转系数矩阵
+    sin = torch.cat([angles.sin(), angles.sin()], dim=-1).unsqueeze(1) # [B, 1, S, D]
+    cos = torch.cat([angles.cos(), angles.cos()], dim=-1).unsqueeze(1) # [B, 1, S, D]
+
+    # 4. 执行复数旋转变换: [x1, x2] 变为 [-x2, x1]
+    x1, x2 = x[..., :D//2], x[..., D//2:]
+    rotate_half = torch.cat([-x2, x1], dim=-1)
+    
+    # 5. 旋转公式: x_rot = x * cos + rotate_half * sin
+    return x * cos + rotate_half * sin
+
+# --- 验证 1D RoPE ---
+if __name__ == "__main__":
+    q = torch.randn(2, 8, 16, 64) # [Batch=2, Heads=8, Seq=16, Dim=64]
+    pos = torch.arange(16).unsqueeze(0).repeat(2, 1) # [Batch=2, Seq=16] 位置从 0 到 15
+    q_rot = apply_1d_rope(q, pos)
+    print("1D RoPE 输出形状:", q_rot.shape) # 严格保持 [2, 8, 16, 64]
+</code></pre>
+        </div>
+      </div>
+
+      <!-- 2.2 2D Axial RoPE -->
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-white text-base text-cyan-300 flex items-center gap-2">
+            <span class="w-6 h-6 rounded bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-mono font-bold">2.2</span>
+            2D Axial RoPE (二维图像空间 · FLUX.1 / SD3 / Lumina-Next)
+          </h3>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">2D 网格坐标 $(h, w)$</span>
+        </div>
+
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          图像具有高度 $H$ 和宽度 $W$ 两个空间轴。将 Head 维度 $D$ 对半拆分：<strong>前 $D/2$ 通道编码高度坐标 $h$，后 $D/2$ 通道编码宽度坐标 $w$</strong>。两个 Patch 的注意力内积严格只取决于它们的二维空间位移差 $(\Delta h, \Delta w)$。
+        </p>
+
+        <!-- 2D RoPE PyTorch Code -->
+        <div class="space-y-2">
+          <span class="text-xs font-mono text-cyan-400 font-semibold">// 2D Axial RoPE 极简独立实现 (支持任意长宽比图像)</span>
+          <pre class="language-python"><code class="language-python">def apply_2d_axial_rope(x: torch.Tensor, H_patches: int, W_patches: int, base: float = 10000.0) -> torch.Tensor:
+    """
+    2D 轴向旋转位置编码 (图像 DiT 专用)
+    - x: [Batch, Heads, Num_Patches, Dim] 其中 Num_Patches = H_patches * W_patches
+    - H_patches, W_patches: 图像空间网格的高和宽 (例如 32x32 或 16x32)
+    """
+    B, Heads, S, D = x.shape
+    assert S == H_patches * W_patches, "Patch 数量必须等于 H_patches * W_patches"
+    assert D % 4 == 0, "维度 Dim 必须能被 4 整除 (高宽各分 D//2，再各对半旋转)"
+    
+    dim_h, dim_w = D // 2, D // 2
+
+    # 1. 生成 2D 真实空间网格坐标 (例如对于 2x3 网格: h 为 [0,0,0,1,1,1], w 为 [0,1,2,0,1,2])
+    grid_h, grid_w = torch.meshgrid(
+        torch.arange(H_patches, device=x.device),
+        torch.arange(W_patches, device=x.device),
+        indexing='ij'
+    )
+    pos_h = grid_h.flatten().unsqueeze(0).repeat(B, 1) # [B, S]
+    pos_w = grid_w.flatten().unsqueeze(0).repeat(B, 1) # [B, S]
+
+    # 2. 将 x 沿通道维度切分为两半: x_h 负责编码高度，x_w 负责编码宽度
+    x_h = x[..., :dim_h] # [B, Heads, S, dim_h]
+    x_w = x[..., dim_h:] # [B, Heads, S, dim_w]
+
+    # 3. 分别应用 1D RoPE 旋转
+    x_h_rot = apply_1d_rope(x_h, pos_h, base=base)
+    x_w_rot = apply_1d_rope(x_w, pos_w, base=base)
+
+    # 4. 重新沿通道拼接回完整的 Dim 向量
+    return torch.cat([x_h_rot, x_w_rot], dim=-1)
+
+# --- 验证 2D RoPE (支持非正方形 16:9 任意画幅) ---
+if __name__ == "__main__":
+    img_patches = torch.randn(2, 8, 16 * 32, 64) # [B=2, Heads=8, 512个Patch (高16, 宽32), Dim=64]
+    out_2d = apply_2d_axial_rope(img_patches, H_patches=16, W_patches=32)
+    print("2D RoPE 输出形状:", out_2d.shape) # [2, 8, 512, 64]
+</code></pre>
+        </div>
+      </div>
+
+      <!-- 2.3 3D Spatiotemporal RoPE -->
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-white text-base text-indigo-300 flex items-center gap-2">
+            <span class="w-6 h-6 rounded bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-mono font-bold">2.3</span>
+            3D 时空 RoPE (三维视频生成 · Wan 2.1 / HunyuanVideo / Sora)
+          </h3>
+          <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">3D 时空坐标 $(t, h, w)$</span>
+        </div>
+
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          视频是包含时间轴的 3D 张量 $(T, H, W)$。将特征通道切分为三等份（如 $D = D_t + D_h + D_w$）：分别独立编码帧时间序号 $t$、高度 $h$ 和宽度 $w$。
+        </p>
+
+        <!-- 3D RoPE PyTorch Code -->
+        <div class="space-y-2">
+          <span class="text-xs font-mono text-indigo-400 font-semibold">// 3D Spatiotemporal RoPE 极简独立实现</span>
+          <pre class="language-python"><code class="language-python">def apply_3d_spatiotemporal_rope(x: torch.Tensor, T_frames: int, H_patches: int, W_patches: int, base: float = 10000.0) -> torch.Tensor:
+    """
+    3D 时空旋转位置编码 (视频 DiT 专用)
+    - x: [Batch, Heads, Num_Tokens, Dim] 其中 Num_Tokens = T_frames * H_patches * W_patches
+    """
+    B, Heads, S, D = x.shape
+    assert S == T_frames * H_patches * W_patches
+    
+    # 假设通道划分为: Time 占 16, Height 占 24, Width 占 24 (总和 64)
+    dim_t, dim_h, dim_w = 16, 24, 24
+    assert dim_t + dim_h + dim_w == D
+
+    # 1. 生成 3D 时空立方体网格坐标 (T, H, W)
+    grid_t, grid_h, grid_w = torch.meshgrid(
+        torch.arange(T_frames, device=x.device),
+        torch.arange(H_patches, device=x.device),
+        torch.arange(W_patches, device=x.device),
+        indexing='ij'
+    )
+    pos_t = grid_t.flatten().unsqueeze(0).repeat(B, 1) # [B, S]
+    pos_h = grid_h.flatten().unsqueeze(0).repeat(B, 1) # [B, S]
+    pos_w = grid_w.flatten().unsqueeze(0).repeat(B, 1) # [B, S]
+
+    # 2. 沿通道维度切分成三部分
+    x_t, x_h, x_w = torch.split(x, [dim_t, dim_h, dim_w], dim=-1)
+
+    # 3. 对时间、高度、宽度分别施加对应轴向的 RoPE
+    x_t_rot = apply_1d_rope(x_t, pos_t, base=base)
+    x_h_rot = apply_1d_rope(x_h, pos_h, base=base)
+    x_w_rot = apply_1d_rope(x_w, pos_w, base=base)
+
+    # 4. 重新拼接合并
+    return torch.cat([x_t_rot, x_h_rot, x_w_rot], dim=-1)
+
+# --- 验证 3D RoPE (视频 8 帧 x 16 x 16 网格) ---
+if __name__ == "__main__":
+    video_tokens = torch.randn(2, 8, 8 * 16 * 16, 64) # [B=2, Heads=8, 2048个时空Token, Dim=64]
+    out_3d = apply_3d_spatiotemporal_rope(video_tokens, T_frames=8, H_patches=16, W_patches=16)
+    print("3D 时空 RoPE 输出形状:", out_3d.shape) # [2, 8, 2048, 64]
+</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 3: Qwen Multimodal RoPE (M-RoPE) Deep Dive -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        Qwen 独创 M-RoPE (Multimodal RoPE) 深度解构与多模态实战
+      </h2>
+
+      <div class="glass-card rounded-xl p-6 border border-emerald-500/40 space-y-5 bg-emerald-950/10">
+        <div class="flex items-center gap-2 text-emerald-300 font-bold text-base">
+          <i data-lucide="sparkles" class="w-5 h-5 text-emerald-400"></i>
+          Qwen2-VL / Qwen-Image 为什么提出 M-RoPE？（图文交错对齐革命）
+        </div>
+        <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+          当一段输入既包含文字、又包含图片、甚至包含视频时（如 <em>“文本描述 ➔ [图片1] ➔ 对比文本 ➔ [图片2]”</em>），传统的单一位置编码会崩溃。
+        </p>
+
+        <!-- 3-Tuple Logic -->
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
+          <h4 class="font-bold text-slate-200 text-sm">M-RoPE 的统一三元组位置分配算法 $[pos_{\text{temporal}}, pos_{\text{height}}, pos_{\text{width}}]$：</h4>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono">
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1.5">
+              <span class="text-amber-400 font-bold font-sans">1. 纯文本 Token</span>
+              <div class="text-slate-300">$[i, \ i, \ i]$</div>
+              <p class="text-slate-500 font-sans text-[11px]">三个位置分量共享相同的序号 $i$。三个轴向旋转叠加后严格等价于标准 1D 文本 RoPE！</p>
+            </div>
+
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1.5">
+              <span class="text-emerald-400 font-bold font-sans">2. 图像视觉 Token</span>
+              <div class="text-slate-300">$[t_{\text{img}}, \ h, \ w]$</div>
+              <p class="text-slate-500 font-sans text-[11px]">时间维保持当前图像出现的固定绝对时刻 $t_{\text{img}}$，空间维展开为真实的二维网格坐标 $(h, w)$。</p>
+            </div>
+
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1.5">
+              <span class="text-cyan-400 font-bold font-sans">3. 视频视觉 Token</span>
+              <div class="text-slate-300">$[t_k, \ h, \ w]$</div>
+              <p class="text-slate-500 font-sans text-[11px]">时间维递增为视频帧序号 $t_k$，空间维保持 $(h, w)$，完美自适应任意长短视频与任意分辨率！</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- M-RoPE Multimodal Code -->
+        <div class="space-y-2">
+          <span class="text-xs font-mono text-emerald-400 font-semibold">// Qwen M-RoPE 图文混合输入端到端代码实战</span>
+          <pre class="language-python"><code class="language-python">class QwenMRoPE(nn.Module):
+    """
+    Qwen2-VL / Qwen-Image 官方级 M-RoPE 核心实现
+    """
+    def __init__(self, head_dim: int, mrope_section: tuple = (16, 24, 24), base: float = 10000.0):
+        super().__init__()
+        self.head_dim = head_dim
+        self.mrope_section = mrope_section # (Time, Height, Width) 通道分配
+        assert sum(mrope_section) == head_dim
+
+        # 初始化三个轴向的频率表
+        self.freqs = nn.ParameterList([
+            nn.Parameter(1.0 / (base ** (torch.arange(0, s, 2).float() / s)), requires_grad=False)
+            for s in mrope_section
+        ])
+
+    def forward(self, q: torch.Tensor, k: torch.Tensor, pos_ids: torch.Tensor) -> tuple:
+        """
+        - q, k: [Batch, Heads, Total_Seq_Len, Head_Dim]
+        - pos_ids: [3, Batch, Total_Seq_Len] 包含 (Time_ID, Height_ID, Width_ID)
+        """
+        # 1. 沿通道切分为三份
+        q_splits = torch.split(q, self.mrope_section, dim=-1)
+        k_splits = torch.split(k, self.mrope_section, dim=-1)
+
+        q_rot_list, k_rot_list = [], []
+        
+        # 2. 对 3 个轴向依次应用旋转
+        for i in range(3):
+            axis_pos = pos_ids[i] # [Batch, Total_Seq_Len]
+            inv_freq = self.freqs[i] # [Section_Dim // 2]
+            
+            # 计算弧度与 cos/sin
+            angles = torch.einsum('bs, d -> bsd', axis_pos.float(), inv_freq)
+            sin = torch.cat([angles.sin(), angles.sin()], dim=-1).unsqueeze(1) # [B, 1, S, Section_Dim]
+            cos = torch.cat([angles.cos(), angles.cos()], dim=-1).unsqueeze(1)
+
+            # 复数半旋转变换
+            q_i, k_i = q_splits[i], k_splits[i]
+            d_i = q_i.shape[-1]
+            q_rot_half = torch.cat([-q_i[..., d_i//2:], q_i[..., :d_i//2]], dim=-1)
+            k_rot_half = torch.cat([-k_i[..., d_i//2:], k_i[..., :d_i//2]], dim=-1)
+
+            q_rot_list.append(q_i * cos + q_rot_half * sin)
+            k_rot_list.append(k_i * cos + k_rot_half * sin)
+
+        # 3. 拼接回完整的 Head_Dim 向量
+        return torch.cat(q_rot_list, dim=-1), torch.cat(k_rot_list, dim=-1)
+
+# --- 模拟图文混合输入：5 个文本 Token + 一张 4x4 (16个Token) 图像 ---
+if __name__ == "__main__":
+    mrope = QwenMRoPE(head_dim=64, mrope_section=(16, 24, 24))
+    
+    # 总序列长度: 5(文本) + 16(图片) = 21 Token
+    total_len = 21
+    q = torch.randn(1, 8, total_len, 64)
+    k = torch.randn(1, 8, total_len, 64)
+
+    # 构造 M-RoPE 3D Position IDs: [3, Batch=1, Seq=21]
+    pos_ids = torch.zeros(3, 1, total_len, dtype=torch.long)
+    
+    # 1. 前 5 个文本 Token: [0,0,0], [1,1,1], [2,2,2], [3,3,3], [4,4,4]
+    for i in range(5):
+        pos_ids[:, 0, i] = torch.tensor([i, i, i])
+        
+    # 2. 后 16 个图像 Token: 属于时刻 t=5，空间网格 4x4
+    gh, gw = torch.meshgrid(torch.arange(4), torch.arange(4), indexing='ij')
+    pos_ids[0, 0, 5:] = 5              # 时间维固定为 5
+    pos_ids[1, 0, 5:] = gh.flatten()   # 高度维 0~3
+    pos_ids[2, 0, 5:] = gw.flatten()   # 宽度维 0~3
+
+    q_rot, k_rot = mrope(q, k, pos_ids)
+    print("M-RoPE 图文混合输入成功完成旋转! Q 维度:", q_rot.shape) # [1, 8, 21, 64]
+</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 4: Comparison Table & Cheat Sheet -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">4</span>
+        四大 RoPE 范式横向对比矩阵 (Cheat Sheet)
+      </h2>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-800 glass-card">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/90 text-slate-200 uppercase font-semibold border-b border-slate-800 font-mono">
+            <tr>
+              <th class="p-3.5">编码类型</th>
+              <th class="p-3.5 text-emerald-400">坐标形式</th>
+              <th class="p-3.5 text-cyan-400">通道切分方式</th>
+              <th class="p-3.5 text-indigo-400">适用模态与代表模型</th>
+              <th class="p-3.5 text-purple-400">核心优势</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 font-mono">
+            <tr class="hover:bg-slate-800/30">
+              <td class="p-3.5 font-sans font-bold text-white">1D RoPE</td>
+              <td class="p-3.5">$[m]$ (标量)</td>
+              <td class="p-3.5">$D$ 维全量旋转</td>
+              <td class="p-3.5 font-sans">纯文本 (LLaMA, Mistral, RoFormer)</td>
+              <td class="p-3.5 font-sans">相对位置线性衰减，外推性强</td>
+            </tr>
+            <tr class="hover:bg-slate-800/30">
+              <td class="p-3.5 font-sans font-bold text-cyan-300">2D Axial RoPE</td>
+              <td class="p-3.5">$[h, w]$ (二维)</td>
+              <td class="p-3.5">对半切分 $(D/2, D/2)$</td>
+              <td class="p-3.5 font-sans">图像生成 (FLUX.1, SD3, Lumina)</td>
+              <td class="p-3.5 font-sans">解耦高宽，天然支持任意长宽比生成</td>
+            </tr>
+            <tr class="hover:bg-slate-800/30">
+              <td class="p-3.5 font-sans font-bold text-indigo-300">3D Spatiotemporal</td>
+              <td class="p-3.5">$[t, h, w]$ (三维)</td>
+              <td class="p-3.5">三等分 $(D_t, D_h, D_w)$</td>
+              <td class="p-3.5 font-sans">视频生成 (Wan 2.1, HunyuanVideo, Sora)</td>
+              <td class="p-3.5 font-sans">兼顾帧间运动轨迹与单帧内部构图</td>
+            </tr>
+            <tr class="hover:bg-slate-800/30">
+              <td class="p-3.5 font-sans font-bold text-emerald-400">Qwen M-RoPE</td>
+              <td class="p-3.5">$[t, h, w]$ (统一三元组)</td>
+              <td class="p-3.5">多模态自适应分配</td>
+              <td class="p-3.5 font-sans">多模态大模型 (Qwen2-VL, Qwen-Image)</td>
+              <td class="p-3.5 font-sans">彻底统一图文交错位置表，原生动态分辨率</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Module 5: Pitfalls & Interview Q&A -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">5</span>
+        工业避坑指南与高频面试真题 (Pitfalls & Q&A)
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+        <div class="glass-card rounded-xl p-5 border border-rose-500/30 space-y-2">
+          <div class="font-bold text-rose-400 flex items-center gap-2">
+            <i data-lucide="x-circle" class="w-4 h-4"></i> 避坑 1: Base 频率未调大导致长文本/超高分辨率外推崩塌
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            标准 RoPE 的 base 是 $10,000$。当图像序列或长视频 Token 超过 $8k$ 时，高频震荡周期耗尽，模型注意力会严重发散。<br>
+            <strong>工业解法</strong>：将 base 调大至 <strong>$1,000,000$ (如 Llama 3 / Qwen2)</strong> 或使用 YaRN / NTK-aware 插值。
+          </p>
+        </div>
+
+        <div class="glass-card rounded-xl p-5 border border-emerald-500/30 space-y-2">
+          <div class="font-bold text-emerald-400 flex items-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> 避坑 2: BF16 精度下三角函数计算数值溢出
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            在计算 $\cos$ 和 $\sin$ 时，必须强制在 <strong>FP32 (单精度)</strong> 下进行矩阵乘法与三角计算，最后再转回 BF16 与 Q/K 相乘，否则在大位置序号下会导致数值溢出产生 NaN。
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4">
+      Vision GenAI Series · Rotary Position Embedding Mastery
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

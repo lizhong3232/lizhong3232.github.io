@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>视频生成前沿大模型全景 | Video Generation Masterclass (Sora / Wan2.1 / HunyuanVideo)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#ecfdf5', 500: '#10b981', 600: '#059669' },
+            accent: { 500: '#06b6d4', 600: '#0891b2' },
+            violet: { 500: '#8b5cf6', 600: '#7c3aed' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937', 700: '#374151' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- KaTeX for Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(6, 182, 212, 0.35);
+      transform: translateY(-2px);
+    }
+    .gradient-text-cyan {
+      background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Top Global Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/85 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="../index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="../index.html" class="text-slate-400 hover:text-slate-200">知识总门户</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-cyan-400 flex items-center gap-1">
+            <i data-lucide="video" class="w-4 h-4"></i> 视频生成前沿专题
+          </span>
+        </div>
+      </div>
+      
+      <nav class="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm font-medium">
+        <a href="../index.html" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-1.5">
+          <i data-lucide="home" class="w-4 h-4"></i> 总门户
+        </a>
+        <a href="../01_image_gen/index.html" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center gap-1.5">
+          <i data-lucide="image" class="w-4 h-4 text-emerald-400"></i> 图像生成专区
+        </a>
+        <a href="index.html" class="px-3 py-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center gap-1.5">
+          <i data-lucide="layout-grid" class="w-4 h-4"></i> 视频生成看板
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-14">
+    
+    <div class="relative overflow-hidden rounded-3xl glass-card p-8 sm:p-12 border border-slate-800 bg-gradient-to-b from-slate-900/90 to-dark-950/90">
+      <div class="absolute -right-20 -top-20 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="max-w-3xl space-y-4">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-cyan-950/60 text-cyan-400 border border-cyan-800/60">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Video Generation Frontier (Sora / Wan 2.1 / HunyuanVideo)
+        </div>
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+          视频生成大模型全景体系：<br>
+          <span class="gradient-text-cyan">时空架构 · 3D 因果压缩 · 视频流匹配 · 长视频一致性</span>
+        </h1>
+        <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+          深入透视从 2D 图像扩散到 <strong>4D 时空流形 $(B, T, C, H, W)$</strong> 的升维跳跃。系统性拆解 3D DiT 注意力优化、Causal 3D VAE 时间因果性、首帧条件注入与 Ring Attention / Ulysses 分布式长序列并行。
+        </p>
+      </div>
+    </div>
+
+    <!-- 4 Core Pillars of Video Gen -->
+    <section class="space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="layers" class="w-6 h-6 text-cyan-400"></i> 视频生成 4 大技术支柱 (Core Pillars)
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">从时空离散分词到 4D 速度场回归的核心算法模块</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Card 1 -->
+        <a href="01_spatiotemporal_dit.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-cyan-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">3D Backbone</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-lg text-white mb-2 group-hover:text-cyan-300 transition">01. 时空 3D DiT 架构</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            3D Spatiotemporal Patchification、空间-时间分因子解耦注意力 (Factorized Space-Time Attention) vs 全时空联合注意力。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 border-t border-slate-800 pt-3">
+            • 解决视频 Token 爆炸 $O((THW)^2)$ 难题
+          </div>
+        </a>
+
+        <!-- Card 2 -->
+        <a href="02_causal_3d_vae.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-indigo-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">时空压缩分词</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-lg text-white mb-2 group-hover:text-indigo-300 transition">02. 3D Causal VAE</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            时间因果卷积（Causal 3D Conv）保证时间单向流动、时空 $4 \times 8 \times 8$ 压缩比、流式视频编解码与首帧自洽。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 border-t border-slate-800 pt-3">
+            • 保证自回归与流式推理时间不泄露
+          </div>
+        </a>
+
+        <!-- Card 3 -->
+        <a href="03_video_flow_matching.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-purple-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">速度场回归</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-lg text-white mb-2 group-hover:text-purple-300 transition">03. 视频流匹配与 I2V 控制</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            4D 时空速度场回归、首帧图像引导（I2V Channel Concatenation vs Cross-Attn）、Camera Motion LoRA 运镜控制。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 border-t border-slate-800 pt-3">
+            • 图像驱动视频动画化的工业核心方案
+          </div>
+        </a>
+
+        <!-- Card 4 -->
+        <a href="04_long_video_consistency.html" class="glass-card rounded-2xl p-6 block group border-l-4 border-l-rose-500">
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">长视频一致性</span>
+            <i data-lucide="arrow-up-right" class="w-4 h-4 text-slate-500 group-hover:text-rose-400 transition"></i>
+          </div>
+          <h3 class="font-bold text-lg text-white mb-2 group-hover:text-rose-300 transition">04. 长视频与时间一致性</h3>
+          <p class="text-xs text-slate-400 leading-relaxed mb-4">
+            自回归视频扩散 (Autoregressive Diffusion)、滑动窗口局部注意力、动态帧率 (Dynamic FPS) 嵌入与运动模糊抑制。
+          </p>
+          <div class="text-[11px] font-mono text-slate-500 border-t border-slate-800 pt-3">
+            • 抑制多分钟长视频漂移与结构崩塌
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Video SOTA Comparison Matrix -->
+    <section class="space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="table" class="w-6 h-6 text-indigo-400"></i> 业界顶尖视频大模型全景横向对比矩阵 (SOTA Video Models)
+          </h2>
+          <p class="text-slate-400 text-sm mt-1">Sora、Wan 2.1、HunyuanVideo、CogVideoX 与 LTX-Video 关键技术指标对照</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto rounded-2xl border border-slate-800 glass-card">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/90 text-slate-200 uppercase font-semibold border-b border-slate-800 font-mono">
+            <tr>
+              <th class="p-4">模型名称</th>
+              <th class="p-4 text-cyan-400">主干网络架构</th>
+              <th class="p-4 text-indigo-400">3D VAE 压缩比 $(T \times H \times W)$</th>
+              <th class="p-4 text-emerald-400">注意力与并行机制</th>
+              <th class="p-4 text-purple-400">生成理论范式</th>
+              <th class="p-4 text-amber-400">模型参数规模</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800 font-mono">
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-4 font-sans font-bold text-white">OpenAI Sora</td>
+              <td class="p-4">3D DiT (Spatiotemporal Patches)</td>
+              <td class="p-4 text-indigo-300">时空联合压缩 (推测 $4 \times 8 \times 8$)</td>
+              <td class="p-4">全时空 3D 联合注意力 (Ring Attn)</td>
+              <td class="p-4">扩散模型 (Diffusion SDE/ODE)</td>
+              <td class="p-4">闭源 (~3B - 10B)</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-4 font-sans font-bold text-cyan-300">Alibaba Wan 2.1</td>
+              <td class="p-4">Cross-Attention DiT (3D RoPE)</td>
+              <td class="p-4 text-emerald-300 font-bold">3D Causal VAE ($4 \times 8 \times 8$)</td>
+              <td class="p-4 font-bold text-cyan-300">时空解耦注意力 + Ulysses 并行</td>
+              <td class="p-4 font-bold text-emerald-300">Flow Matching 直线流</td>
+              <td class="p-4 font-bold text-emerald-300">开源 (1.3B / 14B)</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-4 font-sans font-bold text-indigo-300">Tencent HunyuanVideo</td>
+              <td class="p-4">Dual-stream to Single-stream MM-DiT</td>
+              <td class="p-4 text-indigo-300">3D Causal VAE ($4 \times 8 \times 8$)</td>
+              <td class="p-4">3D 联合注意力 (Context Parallelism)</td>
+              <td class="p-4">Flow Matching (Linear Path)</td>
+              <td class="p-4 font-bold text-emerald-300">开源 (13B)</td>
+            </tr>
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-4 font-sans font-bold text-purple-300">THUDM CogVideoX</td>
+              <td class="p-4">3D DiT (Expert Cross-Attention)</td>
+              <td class="p-4 text-purple-300">3D Causal VAE ($4 \times 8 \times 8$)</td>
+              <td class="p-4">3D Full Attention</td>
+              <td class="p-4">DDPM / DDIM</td>
+              <td class="p-4 font-bold text-emerald-300">开源 (2B / 5B)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+        <span>Video Generation Domain Knowledge Portal</span>
+      </div>
+      <div>Designed for Cutting-edge Video Diffusion Research & Senior MLE Interviews</div>
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

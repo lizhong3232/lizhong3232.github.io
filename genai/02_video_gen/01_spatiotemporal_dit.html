@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 01：时空 3D DiT 架构设计 | Spatiotemporal DiT</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#06b6d4', 600: '#0891b2' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Prism.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+  <!-- Lucide Icons & KaTeX -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .gradient-text-cyan {
+      background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="../index.html" class="text-slate-400 hover:text-slate-200">总门户</a>
+          <span class="text-slate-600">/</span>
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">视频生成</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-cyan-400">01. 时空 3D DiT</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <a href="02_causal_3d_vae.html" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1">
+          下一篇: 3D Causal VAE <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+    
+    <!-- Title Card -->
+    <div class="space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 font-mono">
+        <i data-lucide="box" class="w-3.5 h-3.5"></i> VIDEO BACKBONE ARCHITECTURE
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        时空 3D DiT 架构：从 2D Patchify 到 4D 联合注意力
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        视频本质上是时空连续的 4D 张量 $(B, T, C, H, W)$。本专题深入拆解视频 3D Patchify 机制、解耦时空注意力 (Factorized Space-Time Attention) 与 3D 旋转位置编码 (3D RoPE)。
+      </p>
+    </div>
+
+    <!-- Module 1: Motivation & Space-Time Token Explosion -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        核心动机：视频 Token 爆炸与时空分解 (The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="flex items-start gap-3">
+          <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-400 shrink-0 mt-0.5"></i>
+          <p class="text-slate-300 text-sm leading-relaxed">
+            <strong>为什么不能直接对 4D 视频做朴素全注意力 (Full 3D Attention)？</strong>
+          </p>
+        </div>
+        <p class="text-slate-400 text-sm leading-relaxed pl-9">
+          假设一段 5 秒 24 FPS 的高清视频（120 帧，分辨率 $1024 \times 1024$），经过 2D Patchify ($16 \times 16$) 后：<br>
+          Token 总数 $N = 120 \times (64 \times 64) \approx 491,520$ 个 Token！<br>
+          标准自注意力显存复杂度为 $O(N^2) \approx 2.4 \times 10^{11}$ 次浮点运算，<strong>单张 H100 显存瞬间 OOM 爆炸成千上万倍</strong>！
+        </p>
+        <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 space-y-2">
+          <p class="text-cyan-400 font-semibold">破局核心解法：</p>
+          <p class="text-slate-400 leading-relaxed">
+            1. <strong>3D Patchification</strong>：在时间维也做 Patch 压缩（如 $2 \times 16 \times 16$），将时间序列减半。<br>
+            2. <strong>分因子时空解耦注意力 (Factorized Attention)</strong>：先在空间内做 Self-Attention ($O(H W)^2$)，再沿时间轴跨帧做 Temporal Attention ($O(T^2)$)，将二次方爆炸降为线性乘积！
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 2: Math & Attention Factorization -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        时空注意力数学形式与 3D RoPE (KaTeX Math)
+      </h2>
+
+      <div class="space-y-6 text-sm text-slate-300">
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-cyan-300">2.1 解耦时空注意力 (Factorized Space-Time Attention)</h3>
+          <p class="text-slate-400">将输入潜码 $Z \in \mathbb{R}^{B \times T \times S \times D}$（其中 $S = H \times W$ 是空间 Token 数）：</p>
+          
+          <div class="p-4 rounded-lg bg-slate-900 font-mono text-xs space-y-2">
+            <p class="text-emerald-400 font-semibold">// 步骤 1: 空间自注意力 (Spatial Attention - 每一帧内部)</p>
+            <div>$Z_{\text{spatial}} = \text{Attention}(\text{reshape}(Z, (BT, S, D))) \in \mathbb{R}^{BT \times S \times D}$</div>
+            
+            <p class="text-indigo-400 font-semibold pt-2">// 步骤 2: 时间自注意力 (Temporal Attention - 跨帧轨迹捕捉)</p>
+            <div>$Z_{\text{temporal}} = \text{Attention}(\text{transpose}(Z_{\text{spatial}}, (BS, T, D))) \in \mathbb{R}^{BS \times T \times D}$</div>
+          </div>
+          <p class="text-emerald-400 text-xs font-mono">计算量对比：从 $O((T \cdot S)^2)$ 骤降至 $O(T \cdot S^2 + S \cdot T^2)$，节约 99% 以上显存！</p>
+        </div>
+
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-cyan-300">2.2 3D 旋转位置编码 (3D Rotary Position Embedding / 3D RoPE)</h3>
+          <p class="text-slate-400">在视频生成中，传统的 1D 或 2D 绝对位置编码无法泛化到任意帧率和长宽比。Wan 2.1 与 Sora 采用 3D RoPE：</p>
+          $$\mathbf{R}_{3D}(t, h, w) = \text{diag}\Big( \mathbf{R}_{\text{time}}(t), \ \mathbf{R}_{\text{height}}(h), \ \mathbf{R}_{\text{width}}(w) \Big)$$
+          <p class="text-slate-400">将特征通道维度 $D$ 均分为 3 份，分别应用时间、高度、宽度的旋转变换矩阵，天然支持可变分辨率与可变帧率推理！</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 3: PyTorch Implementation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        PyTorch 极简时空 DiT Block 代码实现 (Code Walkthrough)
+      </h2>
+
+      <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+        <pre class="language-python"><code class="language-python">import torch
+import torch.nn as nn
+from einops import rearrange
+
+class SpatioTemporalDiTBlock(nn.Module):
+    """
+    工业级时空解耦 DiT 模块 (Factorized Space-Time DiT Block)
+    """
+    def __init__(self, hidden_dim: int, num_heads: int):
+        super().__init__()
+        # 1. 空间注意力 (Spatial Self-Attention)
+        self.spatial_norm = nn.LayerNorm(hidden_dim)
+        self.spatial_attn = nn.MultiheadAttention(hidden_dim, num_heads, batch_first=True)
+        
+        # 2. 时间注意力 (Temporal Self-Attention)
+        self.temporal_norm = nn.LayerNorm(hidden_dim)
+        self.temporal_attn = nn.MultiheadAttention(hidden_dim, num_heads, batch_first=True)
+        
+        # 3. 前馈网络 (MLP)
+        self.mlp_norm = nn.LayerNorm(hidden_dim)
+        self.mlp = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim * 4),
+            nn.GELU(),
+            nn.Linear(hidden_dim * 4, hidden_dim)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x: [B, T, H, W, D] 4D 视频潜码 Token
+        """
+        B, T, H, W, D = x.shape
+        S = H * W  # 空间 Token 总数
+
+        # === 1. 空间自注意力 (每一帧内部独立做 Attention) ===
+        # 将 [B, T, H, W, D] -> [B * T, S, D]
+        x_space = rearrange(x, 'b t h w d -> (b t) (h w) d')
+        norm_space = self.spatial_norm(x_space)
+        attn_out_space, _ = self.spatial_attn(norm_space, norm_space, norm_space)
+        x_space = x_space + attn_out_space
+
+        # === 2. 时间自注意力 (每个空间位置跨时间帧做 Attention) ===
+        # 将 [B * T, S, D] -> [B * S, T, D]
+        x_time = rearrange(x_space, '(b t) s d -> (b s) t d', b=B, t=T, s=S)
+        norm_time = self.temporal_norm(x_time)
+        attn_out_time, _ = self.temporal_attn(norm_time, norm_time, norm_time)
+        x_time = x_time + attn_out_time
+
+        # === 3. MLP 前馈与残差恢复 ===
+        # 恢复回原始形状 [B, T, H, W, D]
+        x_out = rearrange(x_time, '(b h w) t d -> b t h w d', b=B, h=H, w=W)
+        x_out = x_out + self.mlp(self.mlp_norm(x_out))
+        
+        return x_out
+
+# 快速验证 Tensor 维度流动
+if __name__ == "__main__":
+    block = SpatioTemporalDiTBlock(hidden_dim=256, num_heads=8)
+    video_tokens = torch.randn(2, 8, 16, 16, 256) # [B=2, T=8帧, H=16, W=16, D=256]
+    out = block(video_tokens)
+    print("Output Video Shape:", out.shape) # 严格保持 [2, 8, 16, 16, 256]
+</code></pre>
+      </div>
+    </section>
+
+    <!-- Module 4: Engineering Pitfalls -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono font-bold">4</span>
+        工业界实战避坑指南 (Pitfalls)
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+        <div class="glass-card rounded-xl p-5 border border-rose-500/30 space-y-2">
+          <div class="font-bold text-rose-400 flex items-center gap-2">
+            <i data-lucide="x-circle" class="w-4 h-4"></i> 陷阱 1：时间注意力初始化为随机大权重导致崩塌
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            如果直接从预训练 2D 图像 DiT 加载权重并新增时间注意力层，初始时时间层的随机输出会彻底破坏预训练的单帧画质！<br>
+            <strong>工业解决方案</strong>：将时间注意力最后一层投影矩阵的权重初始化为 <strong>全零 (Zero-init)</strong>，保证训练初始时网络严格等价于 2D 图像模型，随后平滑学习时序动态。
+          </p>
+        </div>
+
+        <div class="glass-card rounded-xl p-5 border border-cyan-500/30 space-y-2">
+          <div class="font-bold text-cyan-400 flex items-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> 方案 2：时间维度必须应用因果或双向注意力？
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            在纯文本到视频 (T2V) 生成中，通常使用<strong>双向时空注意力</strong>（前后帧互相感知）以保证最高画质；而在流式长视频生成或自回归续写中，时间维必须使用<strong>因果 Mask（Causal Mask）</strong>防止未来信息穿越。
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4">
+      Video Generation Series · Spatiotemporal DiT Architecture
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

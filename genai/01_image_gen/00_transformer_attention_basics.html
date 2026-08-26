@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 00：Transformer 与注意力机制基石 | Attention & Multi-Head Attention</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#10b981', 600: '#059669' },
+            accent: { 500: '#06b6d4', 600: '#0891b2' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Prism.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+  <!-- Lucide Icons & KaTeX -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .gradient-text-emerald {
+      background: linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #6366f1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="../index.html" class="text-slate-400 hover:text-slate-200">总门户</a>
+          <span class="text-slate-600">/</span>
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">图像生成</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-emerald-400">00. Transformer 与注意力基石</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2 text-xs">
+        <a href="01_ddpm.html" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1">
+          下一篇: 01. DDPM <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+    
+    <!-- Title Card -->
+    <div class="space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-mono">
+        <i data-lucide="cpu" class="w-3.5 h-3.5"></i> FOUNDATION ARCHITECTURE
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        Transformer 与注意力机制全景基石
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        自注意力机制（Self-Attention）是现代大模型（LLM / DiT / MM-DiT）的算力与表征心脏。本文从软寻址物理直觉、缩放点积推导、多头注意力 (MHA)、跨模态交叉注意力 (Cross-Attention) 到 FlashAttention 硬件加速做透彻拆解。
+      </p>
+    </div>
+
+    <!-- Module 1: The "Why" & Physical Intuition -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        核心动机：为什么注意力机制能颠覆深度学习？(The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="flex items-start gap-3">
+          <i data-lucide="lightbulb" class="w-6 h-6 text-amber-400 shrink-0 mt-0.5"></i>
+          <p class="text-slate-300 text-sm leading-relaxed">
+            <strong>注意力的物理直觉：可微分的“软字典检索 (Soft Key-Value Lookup)”</strong>
+          </p>
+        </div>
+        <p class="text-slate-400 text-sm leading-relaxed pl-9">
+          在传统 Python 字典中，通过一个 Key 只能硬性匹配一个固定的 Value。而在深度学习中，注意力机制实现了<strong>模糊软匹配</strong>：
+        </p>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pl-9">
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-cyan-400">Query (Q, 查询需求)</span>
+            <p class="text-slate-400"><em>“我当前这个 Token 需要找什么特征？”</em>（例如：图像中狗的头部想找狗的尾巴）。</p>
+          </div>
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-indigo-400">Key (K, 索引标签)</span>
+            <p class="text-slate-400"><em>“我是其他位置的 Token，我具有什么特征标签？”</em>（例如：我是草地、我是天空、我是尾巴）。</p>
+          </div>
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-emerald-400">Value (V, 实际内容)</span>
+            <p class="text-slate-400"><em>“如果匹配上了，我能提供什么高维语义特征？”</em>（传递具体的纹理与颜色嵌入）。</p>
+          </div>
+        </div>
+
+        <p class="text-slate-400 text-xs sm:text-sm pl-9 pt-2">
+          <strong>对比 CNN 与 RNN 的决定性优势</strong>：CNN 视野受限于卷积核局部感受野（需堆叠几十层才能看全局），RNN 必须时间串行递归（无法并行且长程梯度消失）。<strong>Attention 拥有 $\mathcal{O}(1)$ 的全局直接通信距离与极致的 GPU 并行吞吐！</strong>
+        </p>
+      </div>
+    </section>
+
+    <!-- Module 2: Math Derivations -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        严谨数学公式拆解 (KaTeX Math)
+      </h2>
+
+      <div class="space-y-6 text-sm text-slate-300">
+        <!-- 2.1 Scaled Dot-Product Attention -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-emerald-300">2.1 缩放点积注意力 (Scaled Dot-Product Attention)</h3>
+          $$\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{Q K^T}{\sqrt{d_k}} \right) V$$
+          
+          <div class="p-3.5 rounded-lg bg-slate-900/90 border border-slate-800 text-xs text-slate-400 space-y-1.5">
+            <p class="text-amber-400 font-semibold flex items-center gap-1.5">
+              <i data-lucide="help-circle" class="w-4 h-4"></i> 面试高频必问：为什么必须除以缩放因子 $\sqrt{d_k}$？
+            </p>
+            <p class="leading-relaxed">
+              假设 $q$ 和 $k$ 的每个分量都是独立同分布的均值为 0、方差为 1 的随机变量。点积 $q \cdot k = \sum_{i=1}^{d_k} q_i k_i$ 的方差为：
+              $$\text{Var}\left( \sum_{i=1}^{d_k} q_i k_i \right) = \sum_{i=1}^{d_k} \text{Var}(q_i k_i) = d_k \cdot 1 = d_k$$
+              当特征维度 $d_k$ 很大（如 64 或 128）时，点积数值的绝对值会变得极大，导致 Softmax 函数进入两端导数极小的<strong>平坦饱和区（梯度几乎为 0，发生梯度消失）</strong>！除以 $\sqrt{d_k}$ 将方差重新缩放回 1，保证 Softmax 处于对输入变化最敏感的健康梯度区。
+            </p>
+          </div>
+        </div>
+
+        <!-- 2.2 Multi-Head Attention -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-cyan-300">2.2 多头注意力机制 (Multi-Head Attention, MHA)</h3>
+          <p class="text-slate-400">单头注意力只能关注一种空间关系模式。多头机制将高维空间投影到 $h$ 个低维子空间，分别独立计算注意力并拼接：</p>
+          $$\text{MHA}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h) W^O$$
+          $$\text{where} \quad \text{head}_i = \text{Attention}(Q W_i^Q, K W_i^K, V W_i^V)$$
+          <p class="text-slate-400">其中投影矩阵 $W_i^Q \in \mathbb{R}^{d_{\text{model}} \times d_k}, \ W_i^K \in \mathbb{R}^{d_{\text{model}} \times d_k}, \ W_i^V \in \mathbb{R}^{d_{\text{model}} \times d_v}, \ W^O \in \mathbb{R}^{h d_v \times d_{\text{model}}}$。</p>
+        </div>
+
+        <!-- 2.3 Cross-Attention in Generation -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-indigo-300">2.3 跨模态交叉注意力 (Cross-Attention in Image/Video DiT)</h3>
+          <p class="text-slate-400">在文生图（Stable Diffusion / DiT）中，文本描述是如何注入图像生成的？</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+              <span class="text-emerald-400 font-bold font-sans">Self-Attention (图像自注意力)</span>
+              <div>$Q = x_{\text{img}} W^Q, \ K = x_{\text{img}} W^K, \ V = x_{\text{img}} W^V$</div>
+              <p class="text-slate-500 font-sans">图像内部不同 Patch 互相感知空间几何。</p>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+              <span class="text-indigo-400 font-bold font-sans">Cross-Attention (图文交叉注意力)</span>
+              <div>$Q = x_{\text{img}} W^Q, \ K = c_{\text{text}} W^K, \ V = c_{\text{text}} W^V$</div>
+              <p class="text-slate-500 font-sans">图像主动向文本特征 $c$ 索取语义指引！</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 3: PyTorch Implementation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        PyTorch 工业级自注意力与交叉注意力代码实现 (Code Walkthrough)
+      </h2>
+
+      <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+        <pre class="language-python"><code class="language-python">import math
+import torch
+import torch.nn as nn
+from typing import Optional
+
+class MultiHeadCrossAttention(nn.Module):
+    """
+    自包含的工业级多头自注意力 / 交叉注意力模块 (PyTorch)
+    """
+    def __init__(self, d_model: int, num_heads: int, d_context: Optional[int] = None):
+        super().__init__()
+        assert d_model % num_heads == 0, "d_model 必须能被 num_heads 整除"
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+        
+        # 支持交叉注意力: Context 维度可以与 d_model 不同
+        d_ctx = d_context if d_context is not None else d_model
+        
+        # 1. 线性投影矩阵
+        self.w_q = nn.Linear(d_model, d_model, bias=False)
+        self.w_k = nn.Linear(d_ctx, d_model, bias=False)
+        self.w_v = nn.Linear(d_ctx, d_model, bias=False)
+        self.w_o = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor, context: Optional[torch.Tensor] = None, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """
+        x: [B, Seq_Q, d_model] - 图像或潜码 Token
+        context: [B, Seq_KV, d_context] - 文本条件 (为 None 时自动退化为 Self-Attention)
+        """
+        B, Seq_Q, _ = x.shape
+        ctx = context if context is not None else x
+        Seq_KV = ctx.shape[1]
+
+        # 2. 投影并分头 [B, Seq, d_model] -> [B, Num_Heads, Seq, d_k]
+        Q = self.w_q(x).view(B, Seq_Q, self.num_heads, self.d_k).transpose(1, 2)
+        K = self.w_k(ctx).view(B, Seq_KV, self.num_heads, self.d_k).transpose(1, 2)
+        V = self.w_v(ctx).view(B, Seq_KV, self.num_heads, self.d_k).transpose(1, 2)
+
+        # 3. 缩放点积注意力 Scores = (Q * K^T) / sqrt(d_k)
+        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k) # [B, Heads, Seq_Q, Seq_KV]
+
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+
+        # 4. Softmax 归一化注意力权重
+        attn_weights = torch.softmax(scores, dim=-1)
+
+        # 5. 加权汇聚 Value 并多头合并
+        out = torch.matmul(attn_weights, V) # [B, Heads, Seq_Q, d_k]
+        out = out.transpose(1, 2).contiguous().view(B, Seq_Q, self.d_model) # [B, Seq_Q, d_model]
+
+        # 6. 最终线性输出投影
+        return self.w_o(out)
+
+# 快速验证 Tensor 维度
+if __name__ == "__main__":
+    attn = MultiHeadCrossAttention(d_model=512, num_heads=8, d_context=768)
+    
+    # 模拟图像 Token (B=2, 256个Patch, dim=512)
+    img_tokens = torch.randn(2, 256, 512)
+    # 模拟文本 CLIP Token (B=2, 77个词, dim=768)
+    text_tokens = torch.randn(2, 77, 768)
+    
+    # 交叉注意力输出
+    out = attn(img_tokens, context=text_tokens)
+    print("Cross-Attention Output Shape:", out.shape) # 严格保持 [2, 256, 512]
+</code></pre>
+      </div>
+    </section>
+
+    <!-- Module 4: FlashAttention & Hardware IO -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">4</span>
+        FlashAttention 硬件 IO 加速原理精讲 (IO-Awareness)
+      </h2>
+
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="flex items-center gap-2 text-cyan-400 font-bold text-base">
+          <i data-lucide="zap" class="w-5 h-5"></i> 为什么标准 Attention 会成为计算瓶颈？
+        </div>
+        <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+          传统 PyTorch 计算 Attention 时，必须把巨大的中间矩阵 $S = Q K^T \in \mathbb{R}^{N \times N}$ 和 $P = \text{softmax}(S)$ 写入显存（HBM），然后再读回计算 $P V$。对于 $N=100k$ 的视频序列，<strong>显存读写瓶颈 (Memory-Bound) 极其严重</strong>！
+        </p>
+
+        <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 space-y-2 text-xs text-slate-300">
+          <h4 class="font-bold text-emerald-400 text-sm">FlashAttention 的两大破局核心：</h4>
+          <p>
+            1. <strong>Tiling (分块加载到片上 SRAM)</strong>：将 $Q, K, V$ 按照 GPU 的高速片上 SRAM 缓存大小切成小块（如 $128 \times 128$），在极速的 SRAM 内部完成局部矩阵乘法。
+          </p>
+          <p>
+            2. <strong>Online Softmax (在线 Softmax 统计量递推更新)</strong>：利用数学递推公式，在分块计算的同时动态维护局部最大值 $m(x)$ 和指数和 $l(x)$，<strong>完全不需要物化保存完整的 $N \times N$ 注意力矩阵</strong>！显存从 $\mathcal{O}(N^2)$ 骤降至 $\mathcal{O}(N)$，速度提升 2~4 倍！
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4">
+      Vision GenAI Series · Transformer & Attention Mastery
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

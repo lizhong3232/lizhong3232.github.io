@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 03：Flow Matching 与 Rectified Flow 直线流 | MLE 专家看板</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#ecfdf5', 500: '#10b981', 600: '#059669' },
+            accent: { 500: '#06b6d4' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937', 700: '#374151' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Prism.js for Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
+  <!-- KaTeX for Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; margin: 1rem 0; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">生成模型专题</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-emerald-400">03. Flow Matching</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <a href="02_ddim.html" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center gap-1">
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 上一篇: DDIM
+        </a>
+        <a href="index.html" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/50 flex items-center gap-1">
+          返回总览 <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+
+    <!-- Title Badge -->
+    <div class="space-y-3 border-b border-slate-800 pb-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">
+        <i data-lucide="zap" class="w-3.5 h-3.5"></i> 专题 03 · 现代生成模型终极底座 (SD3 / Flux / Sora)
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        Flow Matching 与 Rectified Flow：直线最优传输大一统
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        Flow Matching (Lipman et al., ICLR 2023) 与 Rectified Flow (Liu et al., ICLR 2023) 彻底重构了生成扩散模型的数学大厦。通过连续归一化流与直线向量场回归，实现了 10 步欧拉无损采样与 1~2 步 Reflow 极致蒸馏。
+      </p>
+    </div>
+
+    <!-- Module 1: The "Why" -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        核心动机与物理直觉 (The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="flex items-start gap-3">
+          <i data-lucide="lightbulb" class="w-6 h-6 text-amber-400 shrink-0 mt-0.5"></i>
+          <p class="text-slate-300 text-sm leading-relaxed">
+            <strong>两点之间线段最短：从曲折的盘山公路到笔直的高铁轨道</strong>
+          </p>
+        </div>
+        <p class="text-slate-400 text-sm leading-relaxed pl-9">
+          传统扩散（DDPM/DDIM）受限于方差保持（VP）公式，采样轨迹被迫在复杂的超球面流形上盘旋转弯。汽车（求解器）过急弯时如果步子迈得太大，就会产生严重的截断截曲误差，直接飞出悬崖（图像崩溃）。
+        </p>
+        <p class="text-slate-400 text-sm leading-relaxed pl-9">
+          <strong>Flow Matching 的破局大智慧</strong>：为什么非要绕弯？直接从噪声起点 $x_0 \sim \mathcal{N}(0, I)$ 到真实数据终点 $x_1 \sim p_{\text{data}}$ <strong>铺设一条笔直的高铁轨道</strong>！在直线上，速度方向恒定不变，一阶欧拉积分的单步截断误差几乎为 0，我们可以用极少的步数（10~15 步）开足马力极速收敛！
+        </p>
+      </div>
+    </section>
+
+    <!-- Module 2: Rigorous Math Derivation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        严谨数学推导拆解 (KaTeX Math)
+      </h2>
+
+      <div class="space-y-6 text-sm text-slate-300">
+        <!-- 2.1 Continuity Equation -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-emerald-300">2.1 连续性方程 (Continuity Equation) 与流场</h3>
+          <p class="text-slate-400">连续归一化流（CNF）通过含时速度场 $v_t(x)$ 驱动先验概率密度 $p_0$ 演化为数据分布 $p_1$。其连续概率密度演化满足流体力学连续性方程（质量守恒定律）：</p>
+          $$\frac{\partial p_t(x)}{\partial t} + \nabla \cdot \big( p_t(x) v_t(x) \big) = 0$$
+          <p class="text-slate-400">传统极大似然训练需要计算散度项 $\nabla \cdot v_t$，在高维图像空间下计算复杂度高达 $\mathcal{O}(D^3)$，不可直接求解。</p>
+        </div>
+
+        <!-- 2.2 Conditional Flow Matching -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-emerald-300">2.2 条件流匹配 (Conditional Flow Matching, CFM)</h3>
+          <p class="text-slate-400">Lipman et al. 证明了**边缘流匹配与条件流匹配的梯度严格等价**：只要我们在给定样本对 $(x_0, x_1)$ 条件下构建直线插值路径：</p>
+          $$x_t = \psi_t(x_0) = (1 - t) x_0 + t x_1, \quad t \in [0, 1]$$
+          <p class="text-slate-400">其条件解析速度场就是极其简单的时间一阶导数：</p>
+          $$u_t(x_t | x_0, x_1) = \frac{d x_t}{dt} = \frac{d}{dt}\big( (1 - t) x_0 + t x_1 \big) = x_1 - x_0$$
+          <p class="text-slate-400">神经网络 $v_\theta(x_t, t)$ 只需要做最简单的无约束 MSE 回归：</p>
+          $$\mathcal{L}_{\text{CFM}}(\theta) = \mathbb{E}_{t \sim \mathcal{U}[0, 1], x_0 \sim \mathcal{N}(0, I), x_1 \sim p_{\text{data}}} \left[ \Big\| v_\theta(x_t, t) - (x_1 - x_0) \Big\|_2^2 \right]$$
+        </div>
+
+        <!-- 2.3 Reflow -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-emerald-300">2.3 轨迹交叉与 Reflow 直化理论</h3>
+          <p class="text-slate-400">虽然每条条件路径是直线，但不同随机样本对之间会在高维空间发生<strong>轨迹交叉 (Trajectory Crossing)</strong>。在交差点，边缘速度场 $v(x, t) = \mathbb{E}[u_t | x_t=x]$ 变为多个速度矢量的平均值，导致宏观速度场发生微弯。</p>
+          $$\text{Reflow 操作}: (x_0, \hat{x}_1) \sim \text{Pair}(x_0, \text{ODE-Solve}(x_0, v_\theta))$$
+          <p class="text-emerald-400 text-xs font-mono">在生成的新确定性数据对上进行 2-Reflow 微调训练，所有流线完全解耦平行，Euler 欧拉积分单步即可达成极高生成质量！</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 3: Code Walkthrough -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        核心算法代码实现与逐行精讲 (Code Walkthrough)
+      </h2>
+
+      <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+        <pre class="language-python"><code class="language-python">import torch
+import torch.nn as nn
+
+class FlowMatchingPipeline:
+    """
+    工业级 Flow Matching 与 Rectified Flow 核心管线 (PyTorch)
+    """
+    def __init__(self, model: nn.Module):
+        self.model = model  # 速度预测网络 (如 MM-DiT 或 DiT)
+
+    def training_loss(self, x_1: torch.Tensor) -> torch.Tensor:
+        """
+        Flow Matching 训练损失计算:
+        输入 x_1: 真实目标图像 [Batch, Channels, Height, Width]
+        """
+        B = x_1.shape[0]
+        device = x_1.device
+
+        # 1. 采样源分布标准高斯白噪声 x_0 ~ N(0, I)
+        x_0 = torch.randn_like(x_1)
+
+        # 2. 均匀采样连续时间步 t in [0, 1]
+        t = torch.rand(B, 1, 1, 1, device=device)
+
+        # 3. 线性概率路径插值: x_t = (1 - t) * x_0 + t * x_1 (等价于 torch.lerp)
+        x_t = torch.lerp(x_0, x_1, t)
+
+        # 4. 解析真实瞬时速度场: u_t = x_1 - x_0
+        target_velocity = x_1 - x_0
+
+        # 5. 神经网络前向预测速度向量场
+        pred_velocity = self.model(x_t, t.view(B))
+
+        # 6. 极简 MSE 回归损失
+        loss = torch.mean((pred_velocity - target_velocity) ** 2)
+        return loss
+
+    @torch.no_grad()
+    def sample_euler(self, shape: tuple, steps: int = 15, cfg_scale: float = 1.0, null_cond = None, text_cond = None) -> torch.Tensor:
+        """
+        一阶欧拉 ODE 采样推演:
+        从 t=0 (纯噪声 x_0) 积分推演至 t=1 (生成图像 x_1)
+        """
+        device = next(self.model.parameters()).device
+        dt = 1.0 / steps
+        x = torch.randn(shape, device=device)  # x(0)
+
+        for step in range(steps):
+            t_val = step * dt
+            t_tensor = torch.full((shape[0],), t_val, device=device)
+
+            if cfg_scale > 1.0 and text_cond is not None:
+                # 结合 CFG 引导: v_final = v_uncond + w * (v_cond - v_uncond)
+                v_uncond = self.model(x, t_tensor, cond=null_cond)
+                v_cond = self.model(x, t_tensor, cond=text_cond)
+                v_pred = v_uncond + cfg_scale * (v_cond - v_uncond)
+            else:
+                v_pred = self.model(x, t_tensor)
+
+            # 欧拉单步位移积分: x(t + dt) = x(t) + v * dt
+            x = x + v_pred * dt
+
+        return x  # x(1) 得到生成图像</code></pre>
+
+        <div class="space-y-2 pt-2 border-t border-slate-800 text-xs text-slate-400">
+          <h4 class="font-bold text-slate-200 text-sm mb-2">逐行核心张量与逻辑解析：</h4>
+          <ul class="space-y-1.5 list-disc pl-5">
+            <li><code class="text-emerald-300">torch.lerp(x_0, x_1, t)</code>：底层原生 CUDA 优化的线性插值算子，计算 $(1-t)x_0 + tx_1$ 精度更高且避免中间显存拷贝。</li>
+            <li><code class="text-emerald-300">target_velocity = x_1 - x_0</code>：速度场目标不再包含复杂的方差缩放，梯度反向传播极其平稳，无早期尺度爆炸问题。</li>
+            <li><code class="text-emerald-300">x = x + v_pred * dt</code>：极简欧拉积分。由于直线流场曲率接近 0，不需要任何昂贵的高阶求解器（如 Runge-Kutta 45），15 步即可无损出图。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 4: Engineering Pitfalls -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">4</span>
+        工业界落地要点与核心踩坑点 (Engineering Pitfalls)
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+        <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-emerald-400 font-bold">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i> 1. 时间步采样分布加权 (Logit-Normal Sampling)
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            在 SD3 和 Flux.1 中，直接用 $t \sim \mathcal{U}[0, 1]$ 均匀采样会导致中间时间步（图像结构形成期）学习不充分。必须使用 <strong>Logit-Normal 时间步采样分布</strong>（中间多、两头少），才能大幅加快文本对齐与复杂构图的收敛速度。
+          </p>
+        </div>
+
+        <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-emerald-400 font-bold">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i> 2. Guidance Interval 与 Rescale 技巧
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            在 Flow Matching 中全程开启大 CFG 会破坏末端图像细节（如皮肤纹理）。现代主流方案（如 Flux）采用 <strong>Guidance Interval</strong>（仅在 $t \in [0.1, 0.9]$ 开启 CFG，两端关闭），兼具强大的语义控制力与自然的真实质感。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 5: Self-Assessment & Navigation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono font-bold">5</span>
+        深度自测思考题 (Self-Assessment)
+      </h2>
+
+      <div class="space-y-3 text-xs sm:text-sm">
+        <details class="glass-card rounded-xl p-4 border border-slate-800 group cursor-pointer">
+          <summary class="font-semibold text-slate-200 flex justify-between items-center">
+            <span>Q1: 为什么说 Flow Matching 是比标准扩散模型（DDPM/DDIM）更通用的生成大一统理论？</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition"></i>
+          </summary>
+          <div class="mt-3 pt-3 border-t border-slate-800 text-slate-400 leading-relaxed">
+            <strong>解析</strong>：扩散模型可以被严格证明是 Flow Matching 在特定非线性概率路径（方差保持 VP 调度）下的特例。Flow Matching 不仅支持任意形式的高斯插值路径，更支持从任意源分布 $p_0$（如低分辨率图、草图、甚至音频潜码）到目标分布 $p_1$ 的直接转换，摆脱了“源端必须是标准白噪声”的硬性限制。
+          </div>
+        </details>
+
+        <details class="glass-card rounded-xl p-4 border border-slate-800 group cursor-pointer">
+          <summary class="font-semibold text-slate-200 flex justify-between items-center">
+            <span>Q2: 在 Rectified Flow 中，为什么 1-Reflow 之后轨迹就可以完全平行而不交叉？</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition"></i>
+          </summary>
+          <div class="mt-3 pt-3 border-t border-slate-800 text-slate-400 leading-relaxed">
+            <strong>解析</strong>：因为生成数据对 $(x_0, \hat{x}_1)$ 是由一阶段确定性 ODE 积分产生的。根据常微分方程解的唯一性定理（Picard-Lindelöf），两条不同初值的确定性 ODE 轨迹在高维空间中永不相交。以此构造数据集时，每条直线轨迹彼此独立解耦，彻底消除了交叉速度矢量平均化带来的弯曲。
+          </div>
+        </details>
+      </div>
+
+      <!-- Navigation Next/Prev -->
+      <div class="pt-8 border-t border-slate-800 flex justify-between items-center">
+        <a href="02_ddim.html" class="text-xs px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i> 上一篇: 02. DDIM 确定性采样
+        </a>
+        <a href="index.html" class="text-xs px-4 py-2 rounded-lg bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/50 flex items-center gap-1.5 transition">
+          返回全景总览 <i data-lucide="layout-grid" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

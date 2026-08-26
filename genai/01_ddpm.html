@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 01：DDPM 深入浅出与数学严密推导 | MLE 专家看板</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#ecfdf5', 500: '#10b981', 600: '#059669' },
+            accent: { 500: '#06b6d4' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937', 700: '#374151' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Prism.js for Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
+  <!-- KaTeX for Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #f43f5e 0%, #fb7185 50%, #fda4af 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; margin: 1rem 0; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">生成模型专题</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-rose-400">01. DDPM</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <a href="02_ddim.html" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center gap-1">
+          下一篇: DDIM <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+
+    <!-- Title Badge -->
+    <div class="space-y-3 border-b border-slate-800 pb-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-rose-950/60 text-rose-400 border border-rose-800/60">
+        <i data-lucide="flame" class="w-3.5 h-3.5"></i> 专题 01 · 离散马尔可夫扩散基石
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        DDPM：从非平衡热力学扩散到高斯重参数化
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        Denoising Diffusion Probabilistic Models (Ho et al., NeurIPS 2020) 奠定了现代视觉生成的数理基石。本篇彻底解构其物理直觉、正向加噪、后验推导、代码实现与工程陷阱。
+      </p>
+    </div>
+
+    <!-- Module 1: The "Why" -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        核心动机与物理直觉 (The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="flex items-start gap-3">
+          <i data-lucide="lightbulb" class="w-6 h-6 text-amber-400 shrink-0 mt-0.5"></i>
+          <p class="text-slate-300 text-sm leading-relaxed">
+            <strong>墨水在清水中的热力学扩散（熵增破坏）与时间倒流录像带：</strong>
+          </p>
+        </div>
+        <p class="text-slate-400 text-sm leading-relaxed pl-9">
+          想象一滴纯黑墨水落入静止的清水杯中：由于水分子的无规则热运动碰撞（布朗运动），墨水逐渐扩散，空间结构被抹除，最终整杯水达到最大熵状态——均匀浑浊的灰色高斯噪声。
+        </p>
+        <p class="text-slate-400 text-sm leading-relaxed pl-9">
+          <strong>DDPM 的核心思想</strong>：既然宏观破坏是微观高斯扰动的累加，那么只要训练一个神经网络在每个微小时刻估计水分子对墨水分子的“反向恢复力”，我们就可以像<strong>把录像带倒放</strong>一样，从一滩纯高斯白噪声中，逆向凝聚生成出一张清晰逼真的图像！
+        </p>
+      </div>
+    </section>
+
+    <!-- Module 2: Rigorous Math Derivation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        严谨数学推导拆解 (KaTeX Math)
+      </h2>
+
+      <div class="space-y-6 text-sm text-slate-300">
+        <!-- 2.1 Forward Process -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-rose-300">2.1 正向加噪马尔可夫链与重参数化闭式解</h3>
+          <p class="text-slate-400">前向加噪过程定义为离散时间高斯马尔可夫链：</p>
+          $$q(x_t | x_{t-1}) = \mathcal{N}\left(x_t; \sqrt{1 - \beta_t} x_{t-1}, \beta_t I\right)$$
+          <p class="text-slate-400">令 $\alpha_t = 1 - \beta_t$，以及累乘系数 $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$。利用独立高斯分布的可加性性质：</p>
+          $$\begin{aligned}
+          x_t &= \sqrt{\alpha_t} x_{t-1} + \sqrt{1 - \alpha_t} \epsilon_{t-1} \\
+              &= \sqrt{\alpha_t}\left(\sqrt{\alpha_{t-1}} x_{t-2} + \sqrt{1 - \alpha_{t-1}} \epsilon_{t-2}\right) + \sqrt{1 - \alpha_t} \epsilon_{t-1} \\
+              &= \sqrt{\alpha_t \alpha_{t-1}} x_{t-2} + \sqrt{\alpha_t(1 - \alpha_{t-1})} \epsilon_{t-2} + \sqrt{1 - \alpha_t} \epsilon_{t-1} \\
+              &= \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon, \quad \text{其中 } \epsilon \sim \mathcal{N}(0, I)
+          \end{aligned}$$
+          <p class="text-emerald-400 text-xs font-mono">结论：无需循环迭代 $t$ 次，利用闭式解 $x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon$ 可在 $\mathcal{O}(1)$ 时间直接从 $x_0$ 采样出任意时刻 $x_t$。</p>
+        </div>
+
+        <!-- 2.2 Deep Dive on SNR -->
+        <div class="glass-card rounded-xl p-6 border border-cyan-500/30 space-y-4 bg-cyan-950/10">
+          <h3 class="font-bold text-white text-base text-cyan-300 flex items-center gap-2">
+            <i data-lucide="radio" class="w-5 h-5 text-cyan-400"></i>
+            2.2 核心概念精讲：什么是信噪比 SNR (Signal-to-Noise Ratio)？
+          </h3>
+
+          <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p>
+              <strong>1. 通俗直觉：嘈杂酒吧里的交谈</strong>
+            </p>
+            <p class="text-slate-400 pl-4 border-l-2 border-cyan-500">
+              在通信与信号处理中，<strong>信噪比 (SNR)</strong> 衡量的是<strong>“有用信号功率”与“干扰噪声功率”的比值</strong>：
+              $$\text{SNR} = \frac{P_{\text{signal}}}{P_{\text{noise}}} = \frac{\text{Var}(\text{Signal})}{\text{Var}(\text{Noise})}$$
+              就像在嘈杂酒吧里聊天：朋友说话声音越洪亮（信号大）、周围背景嘈杂声越小（噪声小），信噪比就越高，话语信息越清晰可辨。
+            </p>
+
+            <p class="pt-1">
+              <strong>2. 扩散模型中的 SNR 精确数学形式</strong>
+            </p>
+            <p class="text-slate-400">
+              看前向重参数化公式：$x_t = \underbrace{\sqrt{\bar{\alpha}_t} x_0}_{\text{保留的真实图像信号}} + \underbrace{\sqrt{1 - \bar{\alpha}_t} \epsilon}_{\text{注入的高斯白噪声}}$（假定数据已归一化，$\text{Var}(x_0) = 1, \text{Var}(\epsilon) = 1$）。
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                <span class="text-emerald-400 font-bold font-sans">信号方差 (Signal Power)</span>
+                <div>$\text{Var}(\sqrt{\bar{\alpha}_t} x_0) = (\sqrt{\bar{\alpha}_t})^2 = \bar{\alpha}_t$</div>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                <span class="text-rose-400 font-bold font-sans">噪声方差 (Noise Power)</span>
+                <div>$\text{Var}(\sqrt{1 - \bar{\alpha}_t} \epsilon) = (\sqrt{1 - \bar{\alpha}_t})^2 = 1 - \bar{\alpha}_t$</div>
+              </div>
+            </div>
+
+            <p class="text-slate-400">两者相除，便得到了扩散模型中著名的<strong>瞬时信噪比方程</strong>：</p>
+            $$\text{SNR}(t) = \frac{\bar{\alpha}_t}{1 - \bar{\alpha}_t}, \qquad \text{Log-SNR: } \lambda_t = \log \text{SNR}(t) = \log \left(\frac{\bar{\alpha}_t}{1 - \bar{\alpha}_t}\right)$$
+
+            <p class="pt-1">
+              <strong>3. 为什么 SNR 是扩散模型的“第一性原理”？（3 大核心作用）</strong>
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                <span class="font-bold text-cyan-400">① 决定不同阶段学什么</span>
+                <p class="text-slate-400 leading-relaxed">• $\text{SNR} \to 0$ ($t \to 1000$)：噪声占绝对统治，模型只能学习宏观构图与大色调。<br>• $\text{SNR} \gg 1$ ($t \to 0$)：信号清晰，模型专注精雕细琢高频发丝纹理。</p>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                <span class="font-bold text-cyan-400">② 解释为何不能单步出图</span>
+                <p class="text-slate-400 leading-relaxed">在 $t=1000$ 时，$\text{SNR} \approx 0$，输入纯噪声的信息量为 0。模型为了最小化 MSE 只能输出所有样本的“平均值”，导致单步生成必然是一团浆糊。</p>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                <span class="font-bold text-cyan-400">③ 指导现代 Loss 加权</span>
+                <p class="text-slate-400 leading-relaxed">现代前沿模型（如 Min-SNR-5 Weighting, VDM）直接以 $\min(\text{SNR}(t), \gamma)$ 重新加权不同时刻的 Loss，大幅提升训练收敛速度与画质稳定性。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2.3 Posterior Derivation -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-rose-300">2.3 逆向后验条件分布推导 (Bayes' Rule)</h3>
+          <p class="text-slate-400">根据贝叶斯定理，当已知初始真实图像 $x_0$ 时，反向单步分布 $q(x_{t-1} | x_t, x_0)$ 解析可求：</p>
+          $$q(x_{t-1} | x_t, x_0) = \frac{q(x_t | x_{t-1}, x_0) q(x_{t-1} | x_0)}{q(x_t | x_0)} = \mathcal{N}\big(x_{t-1}; \tilde{\mu}_t(x_t, x_0), \tilde{\beta}_t I\big)$$
+          <p class="text-slate-400">展开高斯概率密度指数项并配方，得到后验均值与方差：</p>
+          $$\tilde{\mu}_t(x_t, x_0) = \frac{\sqrt{\bar{\alpha}_{t-1}} \beta_t}{1 - \bar{\alpha}_t} x_0 + \frac{\sqrt{\alpha_t}(1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t} x_t, \quad \tilde{\beta}_t = \frac{1 - \bar{\alpha}_{t-1}}{1 - \bar{\alpha}_t} \beta_t$$
+          <p class="text-slate-400">将 $x_0 = \frac{x_t - \sqrt{1 - \bar{\alpha}_t} \epsilon}{\sqrt{\bar{\alpha}_t}}$ 代入均值消去 $x_0$：</p>
+          $$\tilde{\mu}_t(x_t, \epsilon) = \frac{1}{\sqrt{\alpha_t}} \left( x_t - \frac{\beta_t}{\sqrt{1 - \bar{\alpha}_t}} \epsilon \right)$$
+        </div>
+
+        <!-- 2.3 ELBO Reduction -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-rose-300">2.3 变分下界 (ELBO) 化简到极简 MSE 损失</h3>
+          <p class="text-slate-400">最大化负对数似然变分下界 $\mathbb{E}[-\log p_\theta(x_0)] \le L_{\text{VLB}}$，KL 散度展开后简化为：</p>
+          $$L_{\text{VLB}} = \mathbb{E}_{q}\left[ D_{\text{KL}}\big( q(x_T | x_0) \| p(x_T) \big) + \sum_{t > 1} D_{\text{KL}}\big( q(x_{t-1} | x_t, x_0) \| p_\theta(x_{t-1} | x_t) \big) - \log p_\theta(x_0 | x_1) \right]$$
+          <p class="text-slate-400">Ho et al. 发现抛弃复杂的加权系数，直接优化无加权噪声预测均方误差，不仅训练极其稳定，还能显著提升感知画质：</p>
+          $$\mathcal{L}_{\text{simple}}(\theta) = \mathbb{E}_{t \sim \mathcal{U}[1, T], x_0, \epsilon \sim \mathcal{N}(0, I)} \left[ \Big\| \epsilon - \epsilon_\theta(x_t, t) \Big\|_2^2 \right]$$
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 3: Code Walkthrough -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        核心算法代码实现与逐行精讲 (Code Walkthrough)
+      </h2>
+
+      <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+        <pre class="language-python"><code class="language-python">import torch
+import torch.nn as nn
+
+class DDPM(nn.Module):
+    """
+    极简、自包含且工业可运行的 DDPM 核心管线 (PyTorch)
+    """
+    def __init__(self, model: nn.Module, timesteps: int = 1000, beta_start: float = 1e-4, beta_end: float = 0.02):
+        super().__init__()
+        self.model = model  # 噪声预测网络 (通常为 UNet 或 DiT)
+        self.timesteps = timesteps
+
+        # 1. 预先计算加噪常数表 (注册为持久 buffer)
+        betas = torch.linspace(beta_start, beta_end, timesteps)
+        alphas = 1.0 - betas
+        alphas_cumprod = torch.cumprod(alphas, dim=0)
+        alphas_cumprod_prev = torch.cat([torch.tensor([1.0]), alphas_cumprod[:-1]])
+
+        self.register_buffer('betas', betas)
+        self.register_buffer('alphas', alphas)
+        self.register_buffer('alphas_cumprod', alphas_cumprod)
+        self.register_buffer('sqrt_alphas_cumprod', torch.sqrt(alphas_cumprod))
+        self.register_buffer('sqrt_one_minus_alphas_cumprod', torch.sqrt(1.0 - alphas_cumprod))
+        
+        # 后验方差计算: \tilde{\beta}_t = (1 - \bar{\alpha}_{t-1}) / (1 - \bar{\alpha}_t) * \beta_t
+        posterior_variance = (1.0 - alphas_cumprod_prev) / (1.0 - alphas_cumprod) * betas
+        self.register_buffer('posterior_variance', posterior_variance)
+
+    def q_sample(self, x_0: torch.Tensor, t: torch.Tensor, noise: torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        前向重参数化加噪: x_t = sqrt(alpha_bar) * x_0 + sqrt(1 - alpha_bar) * eps
+        """
+        if noise is None:
+            noise = torch.randn_like(x_0)
+        
+        sqrt_alpha_bar = self.sqrt_alphas_cumprod[t].view(-1, 1, 1, 1)
+        sqrt_one_minus_alpha_bar = self.sqrt_one_minus_alphas_cumprod[t].view(-1, 1, 1, 1)
+        
+        x_t = sqrt_alpha_bar * x_0 + sqrt_one_minus_alpha_bar * noise
+        return x_t, noise
+
+    def forward(self, x_0: torch.Tensor) -> torch.Tensor:
+        """
+        训练前向计算: 随机抽取时间步 t，加噪并计算 MSE 损失
+        输入: x_0: [Batch, Channels, Height, Width]
+        """
+        B = x_0.shape[0]
+        t = torch.randint(0, self.timesteps, (B,), device=x_0.device).long()
+        x_t, noise = self.q_sample(x_0, t)
+        
+        # 神经网络输入带噪图像 x_t 和时间步 t 预测注入的噪声
+        pred_noise = self.model(x_t, t)
+        loss = torch.mean((pred_noise - noise) ** 2)
+        return loss
+
+    @torch.no_grad()
+    def p_sample_loop(self, shape: tuple) -> torch.Tensor:
+        """
+        反向采样循环: 从 x_T ~ N(0, I) 逐步推演 1000 步复原真实图像
+        """
+        device = next(self.model.parameters()).device
+        x = torch.randn(shape, device=device)  # x_T
+
+        for t in reversed(range(self.timesteps)):
+            t_tensor = torch.full((shape[0],), t, device=device, dtype=torch.long)
+            pred_noise = self.model(x, t_tensor)
+            
+            alpha = self.alphas[t]
+            alpha_bar = self.alphas_cumprod[t]
+            beta = self.betas[t]
+
+            # 计算后验均值: mu = (1 / sqrt(alpha)) * (x - (beta / sqrt(1 - alpha_bar)) * pred_noise)
+            mean = (1.0 / torch.sqrt(alpha)) * (x - (beta / torch.sqrt(1.0 - alpha_bar)) * pred_noise)
+            
+            # 注入随机朗之万高斯噪声
+            if t > 0:
+                noise = torch.randn_like(x)
+                sigma = torch.sqrt(self.posterior_variance[t])
+                x = mean + sigma * noise
+            else:
+                x = mean  # 最后一步 t=0 不加噪声
+        return x</code></pre>
+
+        <!-- Structured Code Breakdown List -->
+        <div class="space-y-2 pt-2 border-t border-slate-800 text-xs text-slate-400">
+          <h4 class="font-bold text-slate-200 text-sm mb-2">逐行核心张量与逻辑解析：</h4>
+          <ul class="space-y-1.5 list-disc pl-5">
+            <li><code class="text-rose-300">alphas_cumprod.view(-1, 1, 1, 1)</code>：将形状从 <span class="font-mono text-cyan-400">[B]</span> 扩展为 <span class="font-mono text-cyan-400">[B, 1, 1, 1]</span>，实现广播机制与 4D 图像张量点乘。</li>
+            <li><code class="text-rose-300">torch.randint(0, self.timesteps, (B,))</code>：训练时每个 batch 中各个样本拥有完全随机独立的加噪时间步，增强特征泛化性。</li>
+            <li><code class="text-rose-300">sigma = torch.sqrt(self.posterior_variance[t])</code>：后验条件方差 $\tilde{\beta}_t$，在 $t=0$ 时为 0，防止图像最终输出被白噪声污染。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 4: Engineering Pitfalls -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">4</span>
+        工业界落地要点与核心踩坑点 (Engineering Pitfalls)
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+        <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-rose-400 font-bold">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i> 1. Latent Space (VAE) 缩放因子
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            在 Latent Diffusion (如 SD1.5) 中，预训练 VAE 提取的潜码方差并不严格为 1。必须乘以经验缩放因子（SD 中为 <code class="text-cyan-400">0.18215</code>，SDXL 中为 <code class="text-cyan-400">0.13025</code>），使得潜变量方差保持在 $\approx 1.0$，否则高斯先验假设失效导致黑屏崩溃。
+          </p>
+        </div>
+
+        <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-2">
+          <div class="flex items-center gap-2 text-rose-400 font-bold">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i> 2. 调度表衰减陷阱 (Cosine vs Linear)
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            DDPM 原始的 Linear Schedule 在高分辨率图像上过早破坏低频轮廓；工业界必须切换为 <strong>Nichol & Dhariwal 改进的 Cosine Schedule</strong> 或 <strong>Scaled Linear Schedule</strong>，使 $\bar{\alpha}_t$ 的一阶导数在 $t \to 0$ 和 $t \to T$ 两端平缓过渡。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 5: Self-Assessment & Navigation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">5</span>
+        深度自测思考题 (Self-Assessment)
+      </h2>
+
+      <div class="space-y-3 text-xs sm:text-sm">
+        <details class="glass-card rounded-xl p-4 border border-slate-800 group cursor-pointer">
+          <summary class="font-semibold text-slate-200 flex justify-between items-center">
+            <span>Q1: 为什么在 $t=0$ 的最后一步逆向采样不能添加噪声 $\sigma_0 z$？</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition"></i>
+          </summary>
+          <div class="mt-3 pt-3 border-t border-slate-800 text-slate-400 leading-relaxed">
+            <strong>解析</strong>：$t=0$ 对应目标真实图像空间 $x_0$。根据贝叶斯后验推导，在 $t=0$ 时 $\bar{\alpha}_{-1} = 1.0$，理论后验方差 $\tilde{\beta}_0 = \frac{1 - \bar{\alpha}_{-1}}{1 - \bar{\alpha}_0}\beta_0 = 0$。如果额外注入噪声，图像将被高斯雪花噪点覆盖，破坏像素保真度。
+          </div>
+        </details>
+
+        <details class="glass-card rounded-xl p-4 border border-slate-800 group cursor-pointer">
+          <summary class="font-semibold text-slate-200 flex justify-between items-center">
+            <span>Q2: 为什么 DDPM 采样必须走完 1000 步？中途跳步采样的数学阻碍是什么？</span>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition"></i>
+          </summary>
+          <div class="mt-3 pt-3 border-t border-slate-800 text-slate-400 leading-relaxed">
+            <strong>解析</strong>：DDPM 正向与逆向过程严格依赖相邻时间步 $x_t \to x_{t-1}$ 的高斯马尔可夫链假设。如果直接跳跃（如从 $x_{100} \to x_{80}$），单步方差 $\beta_t$ 不再是无穷小量，局部高斯近似与后验均值推导全盘失效，导致生成严重模糊。这直接催生了 DDIM 的非马尔可夫突破。
+          </div>
+        </details>
+      </div>
+
+      <!-- Navigation Next/Prev -->
+      <div class="pt-8 border-t border-slate-800 flex justify-between items-center">
+        <a href="index.html" class="text-xs px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回全景总览
+        </a>
+        <a href="02_ddim.html" class="text-xs px-4 py-2 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-600/50 flex items-center gap-1.5 transition">
+          下一篇: 02. DDIM 确定性采样 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
