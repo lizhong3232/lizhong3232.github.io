@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 06：可控生成与极速蒸馏 | ControlNet / IP-Adapter / DMD / ADD</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#10b981', 600: '#059669' },
+            accent: { 500: '#06b6d4', 600: '#0891b2' },
+            rose: { 500: '#f43f5e', 600: '#e11d48' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Prism.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+  <!-- Lucide Icons & KaTeX -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(244, 63, 94, 0.35);
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="../index.html" class="text-slate-400 hover:text-slate-200">总门户</a>
+          <span class="text-slate-600">/</span>
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">图像生成</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-rose-400">06. 可控生成与极速蒸馏</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2 text-xs">
+        <a href="05_dit_architecture.html" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1">
+          <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> 上一篇: DiT架构
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+    
+    <!-- Title Card -->
+    <div class="space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-rose-950/80 text-rose-400 border border-rose-800/60 font-mono">
+        <i data-lucide="zap" class="w-3.5 h-3.5"></i> CONTROL & ULTRA-FAST DISTILLATION
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        可控生成与极速蒸馏：ControlNet、IP-Adapter 到 1~4 步 DMD / ADD 实时出图
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        如何在保持基础底模强大的先验下实现姿态、深度与线稿精准控制？又如何将 20~50 步的扩散/流匹配采样压缩至 1~4 步实时生成？本文系统剖析 ControlNet 零卷积机制、IP-Adapter 解耦注意力、一致性模型 (Consistency Models) 与分布匹配蒸馏 (DMD / ADD)。
+      </p>
+    </div>
+
+    <!-- Module 1: The "Why" -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        核心动机：空间可控性与实时推理挑战 (The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <span class="font-bold text-rose-400">空间可控痛点 (Spatial Controllability)</span>
+            <p class="text-slate-400 leading-relaxed">纯文本提示词（Prompt）无法精确表达人脸姿态、手势、边缘线稿与建筑结构。直接全量微调底模会导致灾难性遗忘与泛化崩塌。</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+            <span class="font-bold text-cyan-400">推理延迟痛点 (Real-time Latency)</span>
+            <p class="text-slate-400 leading-relaxed">标准 Diffusion/Flow 模型即使优化后仍需 20 步（耗时约 500ms~2s），无法满足实时绘画、直播互动与工业级高并发渲染需求。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 2: Rigorous Math & Algorithms -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        数学理论与算法解构 (KaTeX Math)
+      </h2>
+
+      <div class="space-y-6 text-sm text-slate-300">
+        <!-- 2.1 ControlNet -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-rose-300">2.1 ControlNet 零卷积微调机制 (Zero-Convolutions)</h3>
+          <p class="text-slate-400">锁定原始预训练底模权重 $\mathcal{F}(x; \Theta)$，创建可训练副本 $\mathcal{F}(x; \Theta_c)$ 并通过两组初始权重全为 0 的 $1 \times 1$ 零卷积层连接：</p>
+          $$y = \mathcal{F}(x; \Theta) + \mathcal{Z}\Big( \mathcal{F}\big(x + \mathcal{Z}(c; \Theta_{z1}); \ \Theta_c\big); \ \Theta_{z2} \Big)$$
+          <p class="text-emerald-400 text-xs font-mono">数学证明：由于初始权重 $\Theta_{z1}=\Theta_{z2}=0$，初始输出 $\mathcal{Z}(\cdot)=0$，整个模块在训练第一步完全等价于未修改的原始底模，梯度平滑注入且绝不破坏基础生成质量！</p>
+        </div>
+
+        <!-- 2.2 IP-Adapter -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-cyan-300">2.2 IP-Adapter 解耦交叉注意力 (Decoupled Cross-Attention)</h3>
+          <p class="text-slate-400">传统图文拼接 Cross-Attention 会导致图像特征与文本特征互相干扰。IP-Adapter 保留原文本注意力，并新增独立的图像 Cross-Attention 分支：</p>
+          $$Z_{\text{new}} = \text{softmax}\left( \frac{Q K_{\text{text}}^T}{\sqrt{d}} \right) V_{\text{text}} + \lambda \cdot \text{softmax}\left( \frac{Q K_{\text{img}}^T}{\sqrt{d}} \right) V_{\text{img}}$$
+        </div>
+
+        <!-- 2.3 DMD -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-emerald-300">2.3 分布匹配蒸馏 (DMD / Distribution Matching Distillation)</h3>
+          <p class="text-slate-400">通过最小化 1 步生成的假分布 $p_\theta$ 与真实教师分布 $p_{\text{real}}$ 之间的 KL 散度，将梯度表示为两个分数函数的差值：</p>
+          $$\nabla_\theta \mathcal{D}_{\text{KL}}(p_\theta \| p_{\text{real}}) = \mathbb{E}_{x_0 \sim p_\theta}\Big[ \nabla_{x_0} \log p_{\text{real}}(x_0) - \nabla_{x_0} \log p_{\text{fake}}(x_0) \Big]$$
+          <p class="text-slate-400">配合生成对抗损失（Adversarial Loss），真正实现 <strong>单步 (1-Step) 高画质实时生成</strong>！</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 3: PyTorch Implementation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        PyTorch 零卷积 ControlNet Block 与 IP-Adapter 实现 (Code Walkthrough)
+      </h2>
+
+      <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+        <pre class="language-python"><code class="language-python">import torch
+import torch.nn as nn
+
+def make_zero_conv(channels: int) -> nn.Conv2d:
+    """创建权重和偏置全为 0 的 1x1 零卷积层"""
+    zero_conv = nn.Conv2d(channels, channels, kernel_size=1, padding=0)
+    nn.init.zeros_(zero_conv.weight)
+    nn.init.zeros_(zero_conv.bias)
+    return zero_conv
+
+class ControlNetToyBlock(nn.Module):
+    """
+    ControlNet 核心连接机制 (锁定原始层 + 训练副本 + 双零卷积)
+    """
+    def __init__(self, channels: int):
+        super().__init__()
+        # 1. 原始预训练底模层 (严格冻结权重)
+        self.locked_block = nn.Sequential(
+            nn.Conv2d(channels, channels, 3, padding=1),
+            nn.GELU(),
+            nn.Conv2d(channels, channels, 3, padding=1)
+        )
+        for p in self.locked_block.parameters():
+            p.requires_grad = False
+
+        # 2. 可训练副本 (Trainable Copy)
+        self.trainable_block = nn.Sequential(
+            nn.Conv2d(channels, channels, 3, padding=1),
+            nn.GELU(),
+            nn.Conv2d(channels, channels, 3, padding=1)
+        )
+        
+        # 3. 两个零卷积层
+        self.zero_conv_in = make_zero_conv(channels)
+        self.zero_conv_out = make_zero_conv(channels)
+
+    def forward(self, x: torch.Tensor, hint: torch.Tensor) -> torch.Tensor:
+        """
+        - x: 潜码输入 [B, C, H, W]
+        - hint: 姿态/线稿条件特征 [B, C, H, W]
+        """
+        # 原始底模输出
+        base_out = self.locked_block(x)
+        
+        # 条件注入并通过可训练副本
+        control_in = x + self.zero_conv_in(hint)
+        control_out = self.zero_conv_out(self.trainable_block(control_in))
+        
+        # 残差相加: 初始时 control_out 完全为 0，输出严格等于 base_out
+        return base_out + control_out
+
+# 快速验证零初始化特性
+if __name__ == "__main__":
+    block = ControlNetToyBlock(channels=64)
+    x = torch.randn(2, 64, 32, 32)
+    hint = torch.randn(2, 64, 32, 32)
+    
+    # 验证初始输出是否完全恒等于原始底模
+    out = block(x, hint)
+    expected = block.locked_block(x)
+    diff = torch.max(torch.abs(out - expected)).item()
+    print("初始输出与原始底模的最大绝对差值:", diff) # 严格为 0.0
+</code></pre>
+      </div>
+    </section>
+
+    <!-- Module 4: Pitfalls -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">4</span>
+        工业实战避坑指南 (Pitfalls)
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+        <div class="glass-card rounded-xl p-5 border border-rose-500/30 space-y-2">
+          <div class="font-bold text-rose-400 flex items-center gap-2">
+            <i data-lucide="x-circle" class="w-4 h-4"></i> 避坑 1: DMD 蒸馏中假分数估计模式坍塌
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            仅使用 Score Distillation Loss 会导致生成样本颜色过度饱和并丢失纹理。必须联合使用 Discriminator（GAN 判别器损失）约束边缘真实感。
+          </p>
+        </div>
+
+        <div class="glass-card rounded-xl p-5 border border-cyan-500/30 space-y-2">
+          <div class="font-bold text-cyan-400 flex items-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> 方案 2: IP-Adapter 的文本与图片权重平滑缩放
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            在推理阶段，通过调节图片注意力缩放因子 $\lambda \in [0.5, 0.8]$，可以平衡文本创意度与参考图主体 ID 相似度。
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4">
+      Vision GenAI Series · Control & Distillation Mastery
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

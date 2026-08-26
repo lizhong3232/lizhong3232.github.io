@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 05：DiT 与 MM-DiT 架构精解 | Diffusion Transformer (SD3 / Flux.1)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#10b981', 600: '#059669' },
+            accent: { 500: '#06b6d4', 600: '#0891b2' },
+            indigo: { 500: '#6366f1', 600: '#4f46e5' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Prism.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+  <!-- Lucide Icons & KaTeX -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+    .gradient-text-indigo {
+      background: linear-gradient(135deg, #6366f1 0%, #06b6d4 50%, #10b981 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="../index.html" class="text-slate-400 hover:text-slate-200">总门户</a>
+          <span class="text-slate-600">/</span>
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">图像生成</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-indigo-400">05. DiT 与 MM-DiT 架构</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2 text-xs">
+        <a href="04_rope_evolution.html" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1">
+          <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> 上一篇: RoPE演进
+        </a>
+        <a href="06_control_distillation.html" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition flex items-center gap-1">
+          下一篇: 控制与蒸馏 <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+    
+    <!-- Title Card -->
+    <div class="space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/80 text-indigo-400 border border-indigo-800/60 font-mono">
+        <i data-lucide="layers" class="w-3.5 h-3.5"></i> DIFFUSION TRANSFORMER ARCHITECTURE
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        DiT 与 MM-DiT 架构精解：从 Peebles DiT 到 SD3 / Flux.1 双流联合注意力
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        Diffusion Transformer (DiT) 彻底终结了 UNet 在视觉生成领域的统治地位。本文深入拆解 Patchify 机制、adaLN-Zero 零初始化自适应调制、SD3 的 MM-DiT 双流联合注意力和 Flux.1 的 QK-Norm 防熵坍塌机制，并提供完整的工业级 PyTorch 代码实现。
+      </p>
+    </div>
+
+    <!-- Module 1: The "Why" -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        核心动机：为什么 DiT 能全面取代 UNet？(The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-indigo-400">1. 严密的 Scaling Law</span>
+            <p class="text-slate-400">UNet 复杂的上下采样与残差连接阻碍了模型参数扩展；DiT 是均一纯 Transformer 堆叠，模型容量（FLOPs）与 FID 生成质量成极强的单调线性提升。</p>
+          </div>
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-cyan-400">2. 移除卷积归纳偏置</span>
+            <p class="text-slate-400">卷积核的局部平移不变性限制了长程语义全局构图，而 Transformer 的全局注意力天然具备理解整幅画面复杂几何与物理逻辑的能力。</p>
+          </div>
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-emerald-400">3. 统一多模态基础设施</span>
+            <p class="text-slate-400">DiT 可以无缝共享 LLM 领域最先进的并行基建（FlashAttention-3、Ring Attention、DeepSpeed ZeRO、Tensor Parallelism）。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 2: Math & Architectural Breakdown -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        核心机制数学拆解：adaLN-Zero 与 MM-DiT 双流
+      </h2>
+
+      <div class="space-y-6 text-sm text-slate-300">
+        <!-- 2.1 adaLN-Zero -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-indigo-300">2.1 adaLN-Zero (自适应层归一化与零初始化门控)</h3>
+          <p class="text-slate-400">时间步 $t$ 和文本条件 $c$ 经 MLP 投影出 6 个缩放、平移与门控参数 $(\gamma_1, \beta_1, \alpha_1, \gamma_2, \beta_2, \alpha_2)$：</p>
+          $$\hat{x} = \text{LayerNorm}(x) \cdot (1 + \gamma_1) + \beta_1$$
+          $$x_{\text{attn}} = x + \alpha_1 \cdot \text{Attention}(\hat{x})$$
+          $$\tilde{x} = \text{LayerNorm}(x_{\text{attn}}) \cdot (1 + \gamma_2) + \beta_2$$
+          $$x_{\text{out}} = x_{\text{attn}} + \alpha_2 \cdot \text{MLP}(\tilde{x})$$
+          <p class="text-emerald-400 text-xs font-mono">✨ 核心奥秘：将门控参数 $\alpha_1, \alpha_2$ 的线性层初始权重设为全零！初始时 $\alpha_1=\alpha_2=0$，整层输出直接为恒等映射 $x_{\text{out}}=x$，使得上百层极深 DiT 训练如丝般平滑，绝不梯度爆炸！</p>
+        </div>
+
+        <!-- 2.2 MM-DiT -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-cyan-300">2.2 MM-DiT 双流联合注意力 (SD3 / Flux.1)</h3>
+          <p class="text-slate-400">传统文生图使用单独的 Cross-Attention 模块，导致图像和文本无法双向深度对齐。MM-DiT 创新性地将文本 Token $T$ 与图像 Token $I$ 拼合在同一序列中做联合自注意力：</p>
+          $$Q = \text{Concat}(Q_{\text{img}}, Q_{\text{text}}), \quad K = \text{Concat}(K_{\text{img}}, K_{\text{text}}), \quad V = \text{Concat}(V_{\text{img}}, V_{\text{text}})$$
+          <p class="text-slate-400">在注意力计算之后，图像流和文本流各自拆开，分别走各自专用的 MLP 前馈网络，兼顾了图文联合双向交互与模态异构表征独立性！</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 3: PyTorch Implementation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        PyTorch 工业级 DiT 与 MM-DiT Block 代码实现 (含逐行精讲)
+      </h2>
+
+      <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+        <pre class="language-python"><code class="language-python">import torch
+import torch.nn as nn
+from typing import Tuple
+
+def modulate(x: torch.Tensor, shift: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
+    """自适应缩放平移公式: x * (1 + scale) + shift"""
+    return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+
+class DiTBlock(nn.Module):
+    """
+    Peebles & Xie 经典 DiT 基础模块 (含 adaLN-Zero 机制)
+    """
+    def __init__(self, hidden_dim: int, num_heads: int, mlp_ratio: float = 4.0):
+        super().__init__()
+        self.norm1 = nn.LayerNorm(hidden_dim, elementwise_affine=False, eps=1e-6)
+        self.attn = nn.MultiheadAttention(hidden_dim, num_heads, batch_first=True)
+        
+        self.norm2 = nn.LayerNorm(hidden_dim, elementwise_affine=False, eps=1e-6)
+        mlp_hidden_dim = int(hidden_dim * mlp_ratio)
+        self.mlp = nn.Sequential(
+            nn.Linear(hidden_dim, mlp_hidden_dim),
+            nn.GELU(approximate="tanh"),
+            nn.Linear(mlp_hidden_dim, hidden_dim)
+        )
+        
+        # adaLN 调制层: 从时间/条件嵌入 c 预测 6 个调制参数 (shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp)
+        self.adaLN_modulation = nn.Sequential(
+            nn.SiLU(),
+            nn.Linear(hidden_dim, 6 * hidden_dim, bias=True)
+        )
+        # 核心: 将线性投影层的权重和偏置初始化为 0 (Zero-Init)
+        nn.init.zeros_(self.adaLN_modulation[1].weight)
+        nn.init.zeros_(self.adaLN_modulation[1].bias)
+
+    def forward(self, x: torch.Tensor, c: torch.Tensor) -> torch.Tensor:
+        """
+        - x: [Batch, Seq_Len, Hidden_Dim] 图像 Patch 潜码
+        - c: [Batch, Hidden_Dim] 时间步 t 与类别/文本组合嵌入
+        """
+        # 1. 获得 6 个调制系数
+        shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
+        
+        # 2. 自注意力分支 (使用 adaLN 调制与零初始化门控 gate_msa)
+        norm_x = modulate(self.norm1(x), shift_msa, scale_msa)
+        attn_out, _ = self.attn(norm_x, norm_x, norm_x)
+        x = x + gate_msa.unsqueeze(1) * attn_out
+        
+        # 3. 前馈 MLP 分支 (使用 adaLN 调制与零初始化门控 gate_mlp)
+        norm_x2 = modulate(self.norm2(x), shift_mlp, scale_mlp)
+        mlp_out = self.mlp(norm_x2)
+        x = x + gate_mlp.unsqueeze(1) * mlp_out
+        
+        return x
+
+class MMDiTJointBlock(nn.Module):
+    """
+    SD3 / Flux 核心: MM-DiT 双流联合注意力模块
+    """
+    def __init__(self, img_dim: int, txt_dim: int, num_heads: int):
+        super().__init__()
+        self.num_heads = num_heads
+        self.head_dim = img_dim // num_heads
+        
+        # 图像流与文本流各自的 Q, K, V 投影矩阵
+        self.img_qkv = nn.Linear(img_dim, img_dim * 3, bias=False)
+        self.txt_qkv = nn.Linear(txt_dim, txt_dim * 3, bias=False)
+        
+        # 图像与文本各自独立的输出投影与 MLP
+        self.img_out = nn.Linear(img_dim, img_dim)
+        self.txt_out = nn.Linear(txt_dim, txt_dim)
+
+    def forward(self, img_tokens: torch.Tensor, txt_tokens: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        - img_tokens: [B, N_img, Dim]
+        - txt_tokens: [B, N_txt, Dim]
+        """
+        B, N_img, D = img_tokens.shape
+        _, N_txt, _ = txt_tokens.shape
+        
+        # 1. 分别计算图像与文本的 Q, K, V
+        q_img, k_img, v_img = self.img_qkv(img_tokens).chunk(3, dim=-1)
+        q_txt, k_txt, v_txt = self.txt_qkv(txt_tokens).chunk(3, dim=-1)
+        
+        # 2. 拼合成联合序列 [B, N_img + N_txt, D]
+        q_joint = torch.cat([q_img, q_txt], dim=1).view(B, N_img + N_txt, self.num_heads, self.head_dim).transpose(1, 2)
+        k_joint = torch.cat([k_img, k_txt], dim=1).view(B, N_img + N_txt, self.num_heads, self.head_dim).transpose(1, 2)
+        v_joint = torch.cat([v_img, v_txt], dim=1).view(B, N_img + N_txt, self.num_heads, self.head_dim).transpose(1, 2)
+        
+        # 3. 联合全量缩放点积注意力
+        scores = torch.matmul(q_joint, k_joint.transpose(-2, -1)) / (self.head_dim ** 0.5)
+        attn = torch.softmax(scores, dim=-1)
+        joint_out = torch.matmul(attn, v_joint).transpose(1, 2).reshape(B, N_img + N_txt, D)
+        
+        # 4. 分流恢复: 图像与文本分别拆开并通过各自的线性层
+        img_out = self.img_out(joint_out[:, :N_img, :])
+        txt_out = self.txt_out(joint_out[:, N_img:, :])
+        
+        return img_out, txt_out
+
+# 快速验证 Tensor 流动
+if __name__ == "__main__":
+    dit = DiTBlock(hidden_dim=256, num_heads=8)
+    x = torch.randn(2, 64, 256) # [B=2, 64个Patch, Dim=256]
+    c = torch.randn(2, 256)     # [B=2, 条件向量]
+    out = dit(x, c)
+    print("DiT Block 输出形状:", out.shape) # [2, 64, 256]
+</code></pre>
+      </div>
+    </section>
+
+    <!-- Module 4: Pitfalls -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono font-bold">4</span>
+        工业实战避坑指南 (Pitfalls)
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+        <div class="glass-card rounded-xl p-5 border border-rose-500/30 space-y-2">
+          <div class="font-bold text-rose-400 flex items-center gap-2">
+            <i data-lucide="x-circle" class="w-4 h-4"></i> 避坑 1: adaLN 未做 Zero-init 导致深层网络训练立即发散
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            若未将 adaLN 线性层权重置 0，随机初始化的门控参数会在第一步反向传播中传递巨大的方差梯度，导致损失直接变为 NaN。
+          </p>
+        </div>
+
+        <div class="glass-card rounded-xl p-5 border border-indigo-500/30 space-y-2">
+          <div class="font-bold text-indigo-400 flex items-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> 避坑 2: Flux.1 必须开启 QK-Normalization
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            在大参数量（12B）DiT 中，未归一化的 QK 点积极大值容易随层数指数级增长。引入 QK-Norm（在点积前对 Q 和 K 做 RMSNorm）可彻底杜绝注意力权重坍塌。
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4">
+      Vision GenAI Series · DiT & MM-DiT Architecture Mastery
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

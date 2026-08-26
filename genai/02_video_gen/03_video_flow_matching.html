@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 03：视频流匹配与 I2V 条件控制 | Video Flow Matching & I2V</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#06b6d4', 600: '#0891b2' },
+            purple: { 500: '#a855f7', 600: '#9333ea' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Prism.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+  <!-- Lucide Icons & KaTeX -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(168, 85, 247, 0.35);
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="../index.html" class="text-slate-400 hover:text-slate-200">总门户</a>
+          <span class="text-slate-600">/</span>
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">视频生成</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-purple-400">03. 视频流匹配与 I2V</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2 text-xs">
+        <a href="02_causal_3d_vae.html" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1">
+          <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> 上一篇: 3D Causal VAE
+        </a>
+        <a href="04_long_video_consistency.html" class="px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 transition flex items-center gap-1">
+          下一篇: 长视频一致性 <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+    
+    <!-- Title Card -->
+    <div class="space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-purple-950/80 text-purple-400 border border-purple-800/60 font-mono">
+        <i data-lucide="move-right" class="w-3.5 h-3.5"></i> 4D VELOCITY FIELD & I2V CONDITIONING
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        视频流匹配与 I2V 条件控制：4D 速度场与首帧引导机制
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        现代视频大模型（Wan 2.1 / HunyuanVideo / MovieGen）全面转向 <strong>4D 时空流匹配（Video Flow Matching）</strong>。本文解构 4D 速度场回归、首帧拼接 (Channel Concatenation) 与相机运镜控制 (Camera Motion LoRA)。
+      </p>
+    </div>
+
+    <!-- Module 1: The "Why" -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        4D 时空速度场：从图片流到时空连续流 (The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <p class="text-slate-300 text-sm leading-relaxed">
+          在 4D 时空连续概率流中，每个时空位置 $(t, x, y, z)$ 的流动速度 $v_\theta(Z_\tau, \tau)$ 决定了整段视频从纯高斯白噪声向连续光流运动演化的确定性轨迹。
+        </p>
+      </div>
+    </section>
+
+    <!-- Module 2: Math & I2V Strategies -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        I2V 首帧条件注入两大范式对比 (KaTeX Math)
+      </h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+        <div class="glass-card rounded-xl p-5 border border-cyan-500/30 space-y-2">
+          <span class="font-bold text-cyan-400">范式 A: 通道拼接 (Channel Concatenation)</span>
+          <p class="text-slate-400 leading-relaxed">
+            将首帧图像潜码 $z_{\text{img}}$ 在通道维直接与噪声 $z_\tau$ 拼叠：
+            $$Z_{\text{input}} = \text{Concat}\big(z_\tau, \ [z_{\text{img}}, \mathbf{0}, \dots, \mathbf{0}], \ \text{mask}\big)$$
+            • <strong>优势</strong>：首帧纹理严格锁定 100% 不失真，工业落地最稳定。
+          </p>
+        </div>
+        <div class="glass-card rounded-xl p-5 border border-purple-500/30 space-y-2">
+          <span class="font-bold text-purple-400">范式 B: 交叉注意力 (Cross-Attention)</span>
+          <p class="text-slate-400 leading-relaxed">
+            首帧通过 CLIP / DINO 提取高维 Visual Tokens 作为 Key/Value 注入：
+            $$Q = Z_\tau W^Q, \quad K = \text{Encoder}(I_0) W^K, \quad V = \text{Encoder}(I_0) W^V$$
+            • <strong>优势</strong>：支持超大动态大幅度位移动作。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 3: PyTorch Implementation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        PyTorch 视频流匹配与 I2V 训练损失实现 (Code Walkthrough)
+      </h2>
+
+      <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+        <pre class="language-python"><code class="language-python">import torch
+import torch.nn as nn
+
+class VideoFlowMatchingLoss(nn.Module):
+    """
+    4D 时空流匹配与 I2V 条件训练损失 (PyTorch)
+    """
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        self.model = model
+
+    def forward(self, x_1: torch.Tensor, first_frame: torch.Tensor) -> torch.Tensor:
+        """
+        - x_1: [B, C, T, H, W] 真实清晰视频潜码
+        - first_frame: [B, C, H, W] 首帧参考图
+        """
+        B, C, T, H, W = x_1.shape
+        device = x_1.device
+
+        # 1. 采样初始高斯噪声 x_0 ~ N(0, I)
+        x_0 = torch.randn_like(x_1)
+
+        # 2. 采样连续时间步 tau in [0, 1]
+        tau = torch.rand((B, 1, 1, 1, 1), device=device)
+
+        # 3. 构造直线概率路径 x_tau = (1 - tau) * x_0 + tau * x_1
+        x_tau = (1.0 - tau) * x_0 + tau * x_1
+
+        # 4. 真实目标速度场 u_tau = x_1 - x_0 (恒定直线速度)
+        target_velocity = x_1 - x_0
+
+        # 5. 构造 I2V 条件拼接张量: 将首帧扩展为 [B, C, T, H, W] 并与 x_tau 拼接
+        cond_frames = torch.zeros_like(x_1)
+        cond_frames[:, :, 0, :, :] = first_frame # 仅第一帧填充
+        
+        # 6. 模型预测 4D 速度向量场 v_pred
+        v_pred = self.model(x_tau, cond_frames, tau.squeeze())
+
+        # 7. 回归均方误差 Loss
+        return torch.mean((v_pred - target_velocity) ** 2)
+
+# 快速验证 Tensor 维度流动
+if __name__ == "__main__":
+    toy_model = nn.Conv3d(16 * 2, 16, 3, padding=1) # 假定接受 [x_tau, cond] 32 通道
+    def forward_fn(x, cond, t): return toy_model(torch.cat([x, cond], dim=1))
+    
+    loss_fn = VideoFlowMatchingLoss(model=forward_fn)
+    real_video = torch.randn(2, 16, 8, 32, 32)
+    img_0 = torch.randn(2, 16, 32, 32)
+    loss = loss_fn(real_video, img_0)
+    print("Video Flow Matching I2V Loss:", loss.item())
+</code></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4">
+      Video Generation Series · Video Flow Matching & I2V Mastery
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

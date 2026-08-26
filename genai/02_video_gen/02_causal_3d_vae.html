@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 02：3D Causal VAE 与时空分词 | Causal 3D VAE for Video</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#06b6d4', 600: '#0891b2' },
+            indigo: { 500: '#6366f1', 600: '#4f46e5' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Prism.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+  <!-- Lucide Icons & KaTeX -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="../index.html" class="text-slate-400 hover:text-slate-200">总门户</a>
+          <span class="text-slate-600">/</span>
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">视频生成</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-indigo-400">02. 3D Causal VAE</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2 text-xs">
+        <a href="01_spatiotemporal_dit.html" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1">
+          <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> 上一篇: 3D DiT
+        </a>
+        <a href="03_video_flow_matching.html" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition flex items-center gap-1">
+          下一篇: 视频流匹配 <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+    
+    <!-- Title Card -->
+    <div class="space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/80 text-indigo-400 border border-indigo-800/60 font-mono">
+        <i data-lucide="binary" class="w-3.5 h-3.5"></i> SPATIOTEMPORAL TOKENIZATION
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        3D Causal VAE：时间因果卷积与时空高效压缩
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        视频在像素空间直接扩散会耗尽显存。3D Causal VAE 将高维视频 $(T, H, W, 3)$ 压缩至低维潜空间 $(T/4, H/8, W/8, 16)$。本文深入拆解<strong>为什么时间轴必须严格满足因果性 (Causal)</strong>、时空非对称卷积 Padding 与流式分块解码。
+      </p>
+    </div>
+
+    <!-- Module 1: The "Why" -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        核心动机：为什么 3D VAE 必须具备“时间因果性”？(The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+          <div class="p-4 rounded-xl bg-slate-900 border border-rose-500/30 space-y-2">
+            <span class="font-bold text-rose-400">非因果标准 3D 卷积的缺陷</span>
+            <p class="text-slate-400 leading-relaxed">
+              标准 3D 卷积在时间维是对称 Padding（每一帧同时看过去帧和未来帧）。这导致：<br>
+              1. 无法实现流式实时推理；<br>
+              2. 首帧会受到未来帧信息污染，导致首帧图像生成失真；<br>
+              3. 无法兼容自回归长视频生成。
+            </p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900 border border-indigo-500/30 space-y-2">
+            <span class="font-bold text-indigo-400">Causal 因果卷积的突破</span>
+            <p class="text-slate-400 leading-relaxed">
+              时间维采用<strong>左单侧 Padding</strong>，当前时刻 $t$ 的卷积核严格只聚合 $\tau \le t$ 的历史与当前帧，保证时间单向流动，且当 $T=1$ 时严格等价于标准 2D 图像 VAE！
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 2: Math & Asymmetric Padding -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        数学形式与非对称时空 Padding (KaTeX Math)
+      </h2>
+
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4 text-sm text-slate-300">
+        <p class="text-slate-400">设 3D 卷积核尺寸为 $(K_t, K_h, K_w) = (3, 3, 3)$：</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
+          <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="text-cyan-400 font-sans font-bold">空间维度 (对称 Padding)</span>
+            <div>$\text{Pad}_{\text{height}} = (1, 1), \quad \text{Pad}_{\text{width}} = (1, 1)$</div>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-900 border border-indigo-500/40 space-y-1">
+            <span class="text-indigo-300 font-sans font-bold">时间维度 (非对称因果 Padding)</span>
+            <div>$\text{Pad}_{\text{temporal}} = (\text{Left}=K_t - 1, \ \text{Right}=0) = (2, 0)$</div>
+          </div>
+        </div>
+        <p class="text-emerald-400 text-xs font-mono">在卷积输出时，剔除右侧未来维度，确保第 $t$ 帧的特征仅依赖于 $0, 1, \dots, t$ 帧。</p>
+      </div>
+    </section>
+
+    <!-- Module 3: PyTorch Implementation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        PyTorch 工业级 CausalConv3d 与时空下采样实现 (Code Walkthrough)
+      </h2>
+
+      <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+        <pre class="language-python"><code class="language-python">import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class CausalConv3d(nn.Module):
+    """
+    3D 时间因果卷积 (Causal 3D Convolution)
+    时间维只看过去，不看未来！
+    """
+    def __init__(self, in_channels: int, out_channels: int, kernel_size=(3, 3, 3), stride=(1, 1, 1), **kwargs):
+        super().__init__()
+        self.kt, self.kh, self.kw = kernel_size
+        self.st, self.sh, self.sw = stride
+        
+        # 空间使用对称 padding, 时间维手动做左单侧 padding
+        self.conv = nn.Conv3d(
+            in_channels, out_channels,
+            kernel_size=(self.kt, self.kh, self.kw),
+            stride=(self.st, self.sh, self.sw),
+            padding=(0, self.kh // 2, self.kw // 2),
+            **kwargs
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        - x: [B, C, T, H, W] 5D 视频张量
+        """
+        # 时间维进行非对称因果 Padding: (left=0, right=0, top=0, bottom=0, front=kt-1, back=0)
+        # F.pad 顺序从最后一个维度往前: (w_left, w_right, h_top, h_bottom, t_front, t_back)
+        time_pad = (0, 0, 0, 0, self.kt - 1, 0)
+        x_padded = F.pad(x, time_pad, mode='replicate')
+        return self.conv(x_padded)
+
+# 快速验证因果性与张量维度流动
+if __name__ == "__main__":
+    conv = CausalConv3d(in_channels=3, out_channels=16, kernel_size=(3, 3, 3))
+    video = torch.randn(2, 3, 8, 64, 64) # [B=2, C=3, T=8帧, H=64, W=64]
+    out = conv(video)
+    print("3D Causal Conv 输出形状:", out.shape) # 严格保持 [2, 16, 8, 64, 64] 时间帧数不漂移
+</code></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4">
+      Video Generation Series · 3D Causal VAE Mastery
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

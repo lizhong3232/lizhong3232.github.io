@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专题 04：长视频生成与时序一致性 | Long Video & Temporal Consistency</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#06b6d4', 600: '#0891b2' },
+            rose: { 500: '#f43f5e', 600: '#e11d48' },
+            dark: { 950: '#030712', 900: '#0b0f19', 850: '#111827', 800: '#1f2937' }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Prism.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+  <!-- Lucide Icons & KaTeX -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
+
+  <style>
+    body { background-color: #030712; color: #f3f4f6; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(244, 63, 94, 0.35);
+    }
+    pre[class*="language-"] { background: #050811 !important; border: 1px solid #1f2937; border-radius: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-dark-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </a>
+        <div class="flex items-center space-x-2 text-sm">
+          <a href="../index.html" class="text-slate-400 hover:text-slate-200">总门户</a>
+          <span class="text-slate-600">/</span>
+          <a href="index.html" class="text-slate-400 hover:text-slate-200">视频生成</a>
+          <span class="text-slate-600">/</span>
+          <span class="font-semibold text-rose-400">04. 长视频与时序一致性</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2 text-xs">
+        <a href="03_video_flow_matching.html" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1">
+          <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> 上一篇: 视频流匹配
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+    
+    <!-- Title Card -->
+    <div class="space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-rose-950/80 text-rose-400 border border-rose-800/60 font-mono">
+        <i data-lucide="film" class="w-3.5 h-3.5"></i> LONG VIDEO CONSISTENCY & CONTEXT PARALLELISM
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+        长视频生成与时序一致性：自回归扩音、滑动窗口与 Context Parallelism
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+        生成数分钟长视频时，如何防止主体外观漂移（Drift）、背景闪烁与显存爆满？本文深入拆解<strong>自回归时空级联生成</strong>、<strong>动态帧率 (Dynamic FPS) 嵌入</strong>与基于 <strong>Ring Attention / DeepSpeed Ulysses</strong> 的超长序列上下文并行。
+      </p>
+    </div>
+
+    <!-- Module 1: The "Why" -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">1</span>
+        长视频生成的 3 大核心挑战 (The "Why")
+      </h2>
+      
+      <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-rose-400">1. 累积误差与主体漂移</span>
+            <p class="text-slate-400">连续自回归生成多个分段（Chunk）时，上一段生成的微小伪影会在下一段被指数级放大，导致人物面部或物体材质完全变形。</p>
+          </div>
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-cyan-400">2. 超长 Token 显存爆炸</span>
+            <p class="text-slate-400">1 分钟 24 FPS 视频包含上百万个 Token，必须使用分布式并行算法切分注意力。</p>
+          </div>
+          <div class="p-3.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+            <span class="font-bold text-emerald-400">3. 运动动态平滑度</span>
+            <p class="text-slate-400">分段拼接处容易产生突兀的跳跃与运动骤停（Motion Jerkiness）。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 2: Architectural Solutions -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">2</span>
+        工业级核心破局算法 (Mathematical & System Solutions)
+      </h2>
+
+      <div class="space-y-6 text-sm text-slate-300">
+        <!-- 2.1 Autoregressive Chaining -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-rose-300">2.1 重叠帧历史条件级联 (Overlapping Frame Conditioning)</h3>
+          <p class="text-slate-400">每次生成 $N$ 帧视频，保留最后 $K$ 帧作为生成下一个 Chunk 的严格首部参考条件（以零噪声注入），确保相邻 Chunk 之间光流完美平滑过渡：</p>
+          $$\text{Chunk}_{k+1} = \text{Model}\Big( \text{Noise}, \ \text{Cond}=\text{Chunk}_k[-K:] \Big)$$
+        </div>
+
+        <!-- 2.2 Context Parallelism -->
+        <div class="glass-card rounded-xl p-6 border border-slate-800 space-y-3">
+          <h3 class="font-bold text-white text-base text-cyan-300">2.2 上下文并行 (Context Parallelism: Ring Attention & Ulysses)</h3>
+          <p class="text-slate-400">将长序列 Token 沿集群 8 张显卡切分。<strong>Ring Attention</strong> 在环形通信中一边传递 Key/Value 块，一边计算注意力；<strong>DeepSpeed Ulysses</strong> 采用 All-to-All 算子在序列并行与注意力头并行之间高效转置！</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 3: PyTorch Implementation -->
+    <section class="space-y-4">
+      <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2.5">
+        <span class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono font-bold">3</span>
+        PyTorch 长视频自回归分段生成管线 (Code Walkthrough)
+      </h2>
+
+      <div class="glass-card rounded-xl p-5 border border-slate-800 space-y-4">
+        <pre class="language-python"><code class="language-python">import torch
+import torch.nn as nn
+from typing import List
+
+class LongVideoPipeline:
+    """
+    长视频自回归分段平滑级联管线 (PyTorch)
+    """
+    def __init__(self, generator_model: nn.Module):
+        self.model = generator_model
+
+    @torch.no_grad()
+    def generate_long_video(self, initial_frame: torch.Tensor, num_chunks: int = 4, chunk_frames: int = 16, overlap: int = 4) -> torch.Tensor:
+        """
+        - initial_frame: [1, C, H, W] 首帧输入
+        - num_chunks: 生成的分段数量 (例如 4 段，每段 16 帧)
+        - overlap: 重叠历史帧数 (保证接缝无缝平滑)
+        """
+        all_chunks: List[torch.Tensor] = []
+        current_cond = initial_frame
+
+        for chunk_idx in range(num_chunks):
+            print(f"正在生成第 {chunk_idx + 1} / {num_chunks} 段视频...")
+            
+            # 1. 模拟生成当前分段 [1, C, chunk_frames, H, W]
+            # 实际模型中由 DiT + Flow Matching 基于 current_cond 进行去噪
+            chunk = torch.randn(1, 16, chunk_frames, 32, 32)
+            
+            # 2. 将条件历史帧强制覆盖到当前分段的前 overlap 帧 (锁定历史)
+            if chunk_idx > 0:
+                chunk[:, :, :overlap, :, :] = current_cond
+                # 收集非重叠部分
+                all_chunks.append(chunk[:, :, overlap:, :, :])
+            else:
+                all_chunks.append(chunk)
+
+            # 3. 提取最后 overlap 帧作为下一段的参考条件
+            current_cond = chunk[:, :, -overlap:, :, :]
+
+        # 4. 沿时间轴拼接出完整的超长视频
+        full_video = torch.cat(all_chunks, dim=2)
+        return full_video
+
+# 快速验证 Tensor 拼接
+if __name__ == "__main__":
+    pipeline = LongVideoPipeline(generator_model=nn.Identity())
+    first_frame = torch.randn(1, 16, 32, 32)
+    long_video = pipeline.generate_long_video(first_frame, num_chunks=3, chunk_frames=16, overlap=4)
+    print("长视频生成总帧数:", long_video.shape[2]) # (16) + (12) + (12) = 40 帧连续无断层
+</code></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-dark-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4">
+      Video Generation Series · Long Video & Consistency Mastery
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
